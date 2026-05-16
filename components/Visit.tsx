@@ -71,10 +71,10 @@ export function Visit() {
                     Phone
                   </div>
                   <a
-                    href="tel:+1"
+                    href="tel:+12077706945"
                     className="font-display text-2xl mt-0.5 inline-block hover:text-rust transition-colors"
                   >
-                    Call the bakery
+                    207 770-6945
                   </a>
                   <div className="text-sm text-cocoa/70 mt-1">
                     Tap to schedule large orders

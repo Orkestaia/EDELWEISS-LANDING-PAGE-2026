@@ -1,4 +1,5 @@
-import { Instagram, Facebook } from "lucide-react";
+import Link from "next/link";
+import { Instagram, Facebook, Phone } from "lucide-react";
 import { EdelweissMark } from "./EdelweissMark";
 
 export function Footer() {
@@ -7,7 +8,7 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-5 sm:px-8 py-16 grid grid-cols-1 md:grid-cols-12 gap-10">
         <div className="md:col-span-5">
           <div className="flex items-center gap-3 text-cream-50">
-            <EdelweissMark size={32} className="text-mustard" />
+            <EdelweissMark size={36} />
             <span className="font-display text-2xl tracking-wide">
               Edelweiss Pastry Shop
             </span>
@@ -16,6 +17,13 @@ export function Footer() {
             A Swiss bakery in Biddeford, Maine. Hand-made daily, served with
             quiet hospitality.
           </p>
+          <a
+            href="tel:+12077706945"
+            className="mt-5 inline-flex items-center gap-2 text-cream-50/85 hover:text-mustard text-sm tracking-[0.18em] uppercase"
+          >
+            <Phone size={14} />
+            207 770-6945
+          </a>
         </div>
 
         <div className="md:col-span-3">
@@ -37,24 +45,29 @@ export function Footer() {
           </div>
           <ul className="mt-4 space-y-2.5 text-sm">
             <li>
-              <a href="#shop" className="hover:text-cream-50">
+              <Link href="/#shop" className="hover:text-cream-50">
                 Shop
-              </a>
+              </Link>
             </li>
             <li>
-              <a href="#heritage" className="hover:text-cream-50">
-                Heritage
-              </a>
+              <Link href="/menu" className="hover:text-cream-50">
+                Full menu
+              </Link>
             </li>
             <li>
-              <a href="#ordering" className="hover:text-cream-50">
-                Ordering
-              </a>
+              <Link href="/chocolates" className="hover:text-cream-50">
+                Chocolates
+              </Link>
             </li>
             <li>
-              <a href="#visit" className="hover:text-cream-50">
+              <Link href="/surprise-bag" className="hover:text-cream-50">
+                Surprise Bag
+              </Link>
+            </li>
+            <li>
+              <Link href="/#visit" className="hover:text-cream-50">
                 Visit
-              </a>
+              </Link>
             </li>
           </ul>
         </div>
