@@ -7,6 +7,7 @@ import { OrderingGuide } from "@/components/OrderingGuide";
 import { Visit } from "@/components/Visit";
 import { Newsletter } from "@/components/Newsletter";
 import { Footer } from "@/components/Footer";
+import { NewsletterModal } from "@/components/NewsletterModal";
 
 export default function Home() {
   return (
@@ -20,6 +21,7 @@ export default function Home() {
       <Visit />
       <Newsletter />
       <Footer />
+      <NewsletterModal />
     </main>
   );
 }

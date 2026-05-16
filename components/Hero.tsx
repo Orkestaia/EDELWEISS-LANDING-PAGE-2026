@@ -28,7 +28,7 @@ export function Hero() {
             >
               <EdelweissMark size={28} />
               <span className="uppercase tracking-[0.32em] text-[0.7rem] sm:text-xs">
-                Swiss bakery · est. Biddeford, Maine
+                Swiss-inspired bakery · Biddeford, Maine
               </span>
             </motion.div>
 
@@ -42,9 +42,9 @@ export function Hero() {
               }}
               className="mt-7 font-display text-[2.85rem] leading-[1.02] sm:text-6xl lg:text-[5.2rem] text-cocoa"
             >
-              A little corner of
-              <span className="block italic text-forest">the Swiss Alps</span>
-              baked fresh on Main Street.
+              Swiss-inspired bakery
+              <span className="block italic text-forest">in Biddeford, Maine.</span>
+              <span className="block">Baked daily, by hand.</span>
             </motion.h1>
 
             <motion.p
@@ -57,9 +57,10 @@ export function Hero() {
               }}
               className="mt-7 max-w-xl text-lg leading-relaxed text-cocoa/75"
             >
-              Hand-laminated croissants, slow-fermented breads, century-old
-              Swiss recipes and small-batch chocolates. Baked daily, with
-              hospitality served the way our grandparents would.
+              Hand-laminated croissants, slow-fermented Swiss breads, century-old
+              pastries and small-batch chocolates. Made from scratch in our
+              downtown Biddeford bakery — order online for in-store pick-up
+              Tuesday through Sunday.
             </motion.p>
 
             <motion.div
@@ -99,21 +100,21 @@ export function Hero() {
               className="mt-12 grid grid-cols-3 max-w-md text-cocoa/70"
             >
               <div>
-                <div className="font-display text-3xl text-forest">72h</div>
+                <div className="font-display text-3xl text-forest">2007</div>
                 <div className="text-xs uppercase tracking-widest mt-1">
-                  Cold ferment
+                  Trained in Switzerland
                 </div>
               </div>
               <div className="border-x border-cocoa/15 px-4">
-                <div className="font-display text-3xl text-forest">100%</div>
+                <div className="font-display text-3xl text-forest">2024</div>
                 <div className="text-xs uppercase tracking-widest mt-1">
-                  Butter laminated
+                  Opened in Biddeford
                 </div>
               </div>
               <div className="pl-4">
                 <div className="font-display text-3xl text-forest">Daily</div>
                 <div className="text-xs uppercase tracking-widest mt-1">
-                  Baked at dawn
+                  Baked from 2am
                 </div>
               </div>
             </motion.div>
@@ -128,7 +129,7 @@ export function Hero() {
             >
               <Image
                 src="/images/products/chocolate-tart.jpg"
-                alt="Edelweiss chocolate and cocoa nib tart"
+                alt="Edelweiss seasonal Swiss chocolate tart baked in Biddeford, Maine"
                 fill
                 priority
                 sizes="(max-width: 1024px) 100vw, 40vw"

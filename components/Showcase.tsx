@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
@@ -133,39 +132,49 @@ function CategorySection({ category }: { category: ProductCategory }) {
               href="#order"
               target="_blank"
               rel="noopener noreferrer"
-              className="block"
+              className="block h-full"
             >
-              <div className="relative aspect-[4/5] w-full overflow-hidden rounded-[1.4rem] bg-cream-100 shadow-soft">
-                <Image
-                  src={p.image}
-                  alt={p.name}
-                  fill
-                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                  className="object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-[1.06]"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-cocoa/55 via-cocoa/0 to-cocoa/0 opacity-90 group-hover:from-cocoa/70 transition-colors" />
-                {p.tag && (
-                  <span className="absolute top-4 left-4 inline-flex items-center gap-1 rounded-full bg-mustard/95 px-3 py-1 text-[0.65rem] uppercase tracking-[0.22em] text-cocoa">
-                    {p.tag}
-                  </span>
-                )}
-                {p.price && (
-                  <span className="absolute top-4 right-4 inline-flex items-center rounded-full bg-cream-50/95 px-3 py-1 text-xs font-display text-cocoa">
-                    {p.price}
-                  </span>
-                )}
-                <span className="absolute bottom-4 right-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-cream-50/95 text-cocoa transition-transform duration-500 group-hover:rotate-45">
-                  <ArrowUpRight size={16} />
-                </span>
-                <div className="absolute inset-x-5 bottom-5 right-16 text-cream-50">
-                  <h4 className="font-display text-xl sm:text-2xl leading-tight">
-                    {p.name}
-                  </h4>
-                  <p className="mt-1.5 text-sm text-cream-50/85 line-clamp-2 hidden sm:block">
-                    {p.description}
-                  </p>
+              <article className="h-full rounded-[1.6rem] overflow-hidden bg-cream-100 shadow-soft hover:shadow-card transition-shadow border border-cocoa/5">
+                {/* Image: object-contain on cream so the whole product shows */}
+                <div className="relative aspect-[5/4] w-full overflow-hidden bg-cream-50">
+                  <Image
+                    src={p.image}
+                    alt={p.name}
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    className="object-contain p-5 transition-transform duration-[1200ms] ease-out group-hover:scale-[1.04]"
+                  />
+
+                  {p.tag && (
+                    <span className="absolute top-4 left-4 inline-flex items-center gap-1 rounded-full bg-mustard/95 px-3 py-1 text-[0.65rem] uppercase tracking-[0.22em] text-cocoa">
+                      {p.tag}
+                    </span>
+                  )}
+                  {p.price && (
+                    <span className="absolute top-4 right-4 inline-flex items-center rounded-full bg-cocoa text-cream-50 px-3 py-1 text-xs font-display tabular-nums">
+                      {p.price}
+                    </span>
+                  )}
                 </div>
-              </div>
+
+                {/* Caption */}
+                <div className="p-6 sm:p-7 flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[0.65rem] uppercase tracking-[0.22em] text-rust/80">
+                      {p.category}
+                    </div>
+                    <h4 className="mt-1.5 font-display text-xl sm:text-2xl text-cocoa leading-tight">
+                      {p.name}
+                    </h4>
+                    <p className="mt-2 text-sm text-cocoa/65 leading-relaxed line-clamp-2">
+                      {p.description}
+                    </p>
+                  </div>
+                  <span className="mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cream-50 border border-cocoa/10 text-cocoa transition-transform duration-500 group-hover:rotate-45 group-hover:bg-rust group-hover:text-cream-50 group-hover:border-rust">
+                    <ArrowUpRight size={15} />
+                  </span>
+                </div>
+              </article>
             </a>
           </motion.li>
         ))}

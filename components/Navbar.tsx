@@ -26,7 +26,7 @@ export function Navbar() {
 
   return (
     <header
-      className={`fixed top-0 inset-x-0 z-50 transition-all duration-500 ${
+      className={`fixed top-0 inset-x-0 z-40 transition-all duration-500 ${
         scrolled
           ? "bg-cream-50/92 backdrop-blur-md border-b border-cocoa/10"
           : "bg-transparent"
@@ -34,16 +34,18 @@ export function Navbar() {
     >
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <div className="flex h-16 sm:h-20 items-center justify-between">
-          <Link
-            href="/"
-            className="flex items-center gap-3 text-cocoa group"
-          >
+          <Link href="/" className="flex items-center gap-3 text-cocoa group">
             <EdelweissMark
-              size={32}
-              className="transition-transform duration-700 group-hover:rotate-[40deg]"
+              size={38}
+              className="shrink-0 transition-transform duration-700 group-hover:rotate-[40deg]"
             />
-            <span className="font-display text-xl sm:text-2xl leading-none tracking-wide">
-              Edelweiss
+            <span className="flex flex-col leading-none">
+              <span className="font-display text-xl sm:text-[1.55rem] tracking-wide">
+                Edelweiss
+              </span>
+              <span className="hidden sm:block mt-1 text-[0.6rem] uppercase tracking-[0.32em] text-cocoa/65">
+                Pastry Shop
+              </span>
             </span>
           </Link>
 

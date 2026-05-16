@@ -17,15 +17,48 @@ const sans = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Edelweiss Pastry Shop — Swiss Bakery in Biddeford, Maine",
+  title: {
+    default:
+      "Edelweiss Pastry Shop · Swiss-inspired Bakery in Biddeford, Maine",
+    template: "%s · Edelweiss Pastry Shop",
+  },
   description:
-    "Hand-crafted Swiss pastries, viennoiserie, breads and chocolates baked daily in Biddeford. Order online for pick-up Tuesday through Sunday.",
+    "Swiss-inspired bakery in Biddeford, Maine. Hand-laminated croissants, slow-fermented breads, Swiss pastries and small-batch chocolates — baked daily, ordered online for pick-up Tuesday through Sunday.",
+  keywords: [
+    "Swiss bakery Maine",
+    "Swiss-inspired bakery",
+    "bakery Biddeford",
+    "Biddeford pastry shop",
+    "Swiss pastries Maine",
+    "croissants Biddeford",
+    "Swiss chocolates Maine",
+    "Edelweiss bakery",
+    "artisan bakery Maine",
+  ],
+  applicationName: "Edelweiss Pastry Shop",
+  authors: [{ name: "Edelweiss Confections LLC" }],
+  creator: "Edelweiss Confections LLC",
   metadataBase: new URL("https://edelweisspastryshop.ch"),
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
+    type: "website",
+    locale: "en_US",
+    title: "Edelweiss Pastry Shop · Swiss-inspired Bakery in Biddeford, Maine",
+    description:
+      "Hand-laminated croissants, slow-fermented Swiss breads, century-old pastries and small-batch chocolates — baked daily in Biddeford, Maine.",
+    siteName: "Edelweiss Pastry Shop",
+  },
+  twitter: {
+    card: "summary_large_image",
     title: "Edelweiss Pastry Shop",
     description:
-      "A Swiss bakery in Biddeford, Maine. Croissants, breads and chocolates, baked daily.",
-    type: "website",
+      "Swiss-inspired bakery in Biddeford, Maine. Order online for in-store pick-up.",
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
 };
 
