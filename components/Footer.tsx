@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Instagram, Facebook, Phone } from "lucide-react";
+import { Instagram, Facebook, Phone, Mail } from "lucide-react";
 import { EdelweissMark } from "./EdelweissMark";
 
 export function Footer() {
@@ -14,16 +14,25 @@ export function Footer() {
             </span>
           </div>
           <p className="mt-5 max-w-sm text-sm leading-relaxed text-cream-50/65">
-            A Swiss bakery in Biddeford, Maine. Hand-made daily, served with
-            quiet hospitality.
+            A Swiss-inspired bakery in Biddeford, Maine. Hand-made daily,
+            served with quiet hospitality.
           </p>
-          <a
-            href="tel:+12077706945"
-            className="mt-5 inline-flex items-center gap-2 text-cream-50/85 hover:text-mustard text-sm tracking-[0.18em] uppercase"
-          >
-            <Phone size={14} />
-            207 770-6945
-          </a>
+          <div className="mt-5 space-y-2.5">
+            <a
+              href="tel:+12077706945"
+              className="inline-flex items-center gap-2 text-cream-50/85 hover:text-mustard text-sm tracking-[0.18em] uppercase"
+            >
+              <Phone size={14} />
+              207 770-6945
+            </a>
+            <a
+              href="mailto:info@edelweissconfections.com"
+              className="flex items-center gap-2 text-cream-50/85 hover:text-mustard text-sm tracking-[0.06em] lowercase"
+            >
+              <Mail size={14} />
+              info@edelweissconfections.com
+            </a>
+          </div>
         </div>
 
         <div className="md:col-span-3">
@@ -31,11 +40,18 @@ export function Footer() {
             Visit
           </div>
           <address className="mt-4 not-italic text-sm text-cream-50/75 leading-relaxed">
-            Biddeford, Maine
+            <a
+              href="https://maps.google.com/?q=5+Alfred+Street+%23103+Biddeford+Maine+04005"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-mustard transition-colors"
+            >
+              5 Alfred Street #103
+              <br />
+              Biddeford, ME 04005
+            </a>
             <br />
-            Tuesday – Sunday
-            <br />
-            Closed Mondays
+            <span className="text-cream-50/55">Tue – Sun · Closed Mondays</span>
           </address>
         </div>
 

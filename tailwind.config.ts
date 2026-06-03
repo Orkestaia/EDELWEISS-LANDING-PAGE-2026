@@ -72,6 +72,11 @@ const config: Config = {
           "0%, 100%": { transform: "translateY(0px)" },
           "50%": { transform: "translateY(-8px)" },
         },
+        floatyBig: {
+          "0%, 100%": { transform: "translate3d(0,0,0) rotate(var(--r,0deg))" },
+          "33%": { transform: "translate3d(2px,-22px,0) rotate(calc(var(--r,0deg) + 0.5deg))" },
+          "66%": { transform: "translate3d(-2px,-10px,0) rotate(calc(var(--r,0deg) - 0.5deg))" },
+        },
         kenburns: {
           "0%": { transform: "scale(1) translate3d(0, 0, 0)" },
           "100%": { transform: "scale(1.16) translate3d(-1.5%, -1%, 0)" },

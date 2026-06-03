@@ -26,17 +26,29 @@ export const metadata: Metadata = {
     template: "%s · Edelweiss Pastry Shop",
   },
   description:
-    "Swiss-inspired bakery in Biddeford, Maine. Hand-laminated croissants, slow-fermented breads, Swiss pastries and small-batch chocolates — baked daily, ordered online for pick-up Tuesday through Sunday.",
+    "Edelweiss Pastry Shop — a Swiss-inspired bakery on Alfred Street in downtown Biddeford, Maine. Hand-laminated croissants, slow-fermented breads, Swiss pastries and small-batch chocolates, baked daily. Order online for in-store pick-up Tuesday through Sunday.",
   keywords: [
-    "Swiss bakery Maine",
-    "Swiss-inspired bakery",
+    // Local SEO (Biddeford-first)
     "bakery Biddeford",
     "Biddeford pastry shop",
-    "Swiss pastries Maine",
-    "croissants Biddeford",
-    "Swiss chocolates Maine",
-    "Edelweiss bakery",
+    "Biddeford croissants",
+    "best bakery Biddeford Maine",
+    "pastries Biddeford",
+    "chocolate shop Biddeford",
+    "Alfred Street Biddeford bakery",
+    // City-cluster SEO (Southern Maine)
+    "bakery Saco Maine",
+    "bakery Old Orchard Beach",
+    "Kennebunk bakery",
+    "Portland Maine Swiss bakery",
+    // Brand & category
+    "Swiss bakery Maine",
+    "Swiss-inspired bakery",
+    "hand-laminated croissants Maine",
     "artisan bakery Maine",
+    "Edelweiss bakery",
+    "Edelweiss Pastry Shop",
+    "Edelweiss Confections",
   ],
   applicationName: "Edelweiss Pastry Shop",
   authors: [{ name: "Edelweiss Confections LLC" }],
@@ -50,19 +62,58 @@ export const metadata: Metadata = {
     locale: "en_US",
     title: "Edelweiss Pastry Shop · Swiss-inspired Bakery in Biddeford, Maine",
     description:
-      "Hand-laminated croissants, slow-fermented Swiss breads, century-old pastries and small-batch chocolates — baked daily in Biddeford, Maine.",
+      "Hand-laminated croissants, slow-fermented Swiss breads, century-old pastries and small-batch chocolates — baked daily at 5 Alfred Street, Biddeford, Maine.",
     siteName: "Edelweiss Pastry Shop",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Edelweiss Pastry Shop",
+    title: "Edelweiss Pastry Shop · Biddeford, Maine",
     description:
-      "Swiss-inspired bakery in Biddeford, Maine. Order online for in-store pick-up.",
+      "Swiss-inspired bakery in downtown Biddeford. Order online for in-store pick-up.",
   },
   robots: {
     index: true,
     follow: true,
   },
+};
+
+// Schema.org LocalBusiness / Bakery — strong signal for Google local SEO.
+// This appears in the page <head> and helps Google understand WHO we are,
+// WHERE the bakery is, WHEN it opens, and HOW to reach us.
+const localBusinessJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Bakery",
+  name: "Edelweiss Pastry Shop",
+  alternateName: "Edelweiss Confections",
+  image: "https://edelweisspastryshop.ch/images/edelweiss-sign.png",
+  url: "https://edelweisspastryshop.ch",
+  telephone: "+1-207-770-6945",
+  email: "info@edelweissconfections.com",
+  priceRange: "$$",
+  servesCuisine: ["Swiss", "European", "Bakery", "Pastry", "Chocolate"],
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: "5 Alfred Street #103",
+    addressLocality: "Biddeford",
+    addressRegion: "ME",
+    postalCode: "04005",
+    addressCountry: "US",
+  },
+  openingHoursSpecification: [
+    {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: ["Tuesday", "Wednesday", "Thursday", "Friday"],
+      opens: "07:00",
+      closes: "14:00",
+    },
+    {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: ["Saturday", "Sunday"],
+      opens: "08:00",
+      closes: "14:00",
+    },
+  ],
+  sameAs: ["https://www.instagram.com/edelweissmaine"],
 };
 
 export default function RootLayout({
@@ -72,6 +123,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${display.variable} ${sans.variable}`}>
+      <head>
+        <script
+          type="application/ld+json"
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(localBusinessJsonLd),
+          }}
+        />
+      </head>
       <body>
         <CartProvider>
           {children}

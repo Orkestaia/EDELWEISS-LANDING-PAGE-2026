@@ -38,9 +38,10 @@ export function Visit() {
           </Reveal>
           <Reveal delay={0.1}>
             <p className="mt-6 text-lg leading-relaxed text-cocoa/75 max-w-lg">
-              You will find us on Main Street, Biddeford — Maine&apos;s little
-              corner of the Swiss Alps. The kettle is always on, the bench is
-              always full of pastry, and we love seeing new faces.
+              You will find us in downtown Biddeford, just off Main Street —
+              Maine&apos;s little corner of the Swiss Alps. The kettle is
+              always on, the bench is always full of pastry, and we love
+              seeing new faces.
             </p>
           </Reveal>
 
@@ -54,12 +55,19 @@ export function Visit() {
                   <div className="text-xs uppercase tracking-[0.22em] text-cocoa/55">
                     Bakery
                   </div>
-                  <div className="font-display text-2xl mt-0.5">
-                    Biddeford, Maine
-                  </div>
-                  <div className="text-sm text-cocoa/70 mt-1">
-                    Free parking on Main Street
-                  </div>
+                  <a
+                    href="https://maps.google.com/?q=5+Alfred+Street+%23103+Biddeford+Maine+04005"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block mt-0.5 hover:text-rust transition-colors"
+                  >
+                    <div className="font-display text-2xl">
+                      5 Alfred Street #103
+                    </div>
+                    <div className="text-sm text-cocoa/70 mt-1">
+                      Biddeford, Maine 04005 · United States
+                    </div>
+                  </a>
                 </div>
               </li>
               <li className="flex items-start gap-4">
@@ -90,10 +98,10 @@ export function Visit() {
                     Email
                   </div>
                   <a
-                    href="mailto:hello@edelweisspastryshop.ch"
-                    className="font-display text-2xl mt-0.5 inline-block hover:text-rust transition-colors"
+                    href="mailto:info@edelweissconfections.com"
+                    className="font-display text-xl sm:text-2xl mt-0.5 inline-block hover:text-rust transition-colors break-all"
                   >
-                    hello@edelweisspastryshop.ch
+                    info@edelweissconfections.com
                   </a>
                 </div>
               </li>

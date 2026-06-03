@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Menu, X, ShoppingBag } from "lucide-react";
 import Link from "next/link";
-import { EdelweissMark } from "./EdelweissMark";
+import Image from "next/image";
 import { useCart } from "@/lib/cart";
 
 const nav: { href: string; label: string }[] = [
@@ -35,20 +35,22 @@ export function Navbar() {
       }`}
     >
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
-        <div className="flex h-16 sm:h-20 items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 text-cocoa group">
-            <EdelweissMark
-              size={38}
-              className="shrink-0 transition-transform duration-700 group-hover:rotate-[40deg]"
+        <div className="flex h-20 sm:h-24 items-center justify-between">
+          {/* Logo: the carved Edelweiss Pastry Shop sign — appears to hang
+              from the top of the navbar. Slight pendulum-style hover. */}
+          <Link
+            href="/"
+            aria-label="Edelweiss Pastry Shop — home"
+            className="group relative -mt-1 sm:-mt-2 origin-top hover:[transform:rotate(-1.2deg)] transition-transform duration-700 ease-out"
+          >
+            <Image
+              src="/images/edelweiss-sign.png"
+              alt="Edelweiss Pastry Shop"
+              width={180}
+              height={135}
+              priority
+              className="w-28 sm:w-36 lg:w-44 h-auto select-none drop-shadow-sm"
             />
-            <span className="flex flex-col leading-none">
-              <span className="font-display text-xl sm:text-[1.55rem] tracking-wide">
-                Edelweiss
-              </span>
-              <span className="hidden sm:block mt-1 text-[0.6rem] uppercase tracking-[0.32em] text-cocoa/65">
-                Pastry Shop
-              </span>
-            </span>
           </Link>
 
           <nav className="hidden lg:flex items-center gap-7 text-[0.72rem] tracking-[0.22em] uppercase text-cocoa/80">

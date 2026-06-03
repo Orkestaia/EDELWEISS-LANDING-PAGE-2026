@@ -111,7 +111,7 @@ export function AlpineHeritage() {
           >
             <EdelweissMark size={26} className="text-cream-50" />
             <span className="uppercase tracking-[0.34em] text-[0.7rem] sm:text-xs text-cream-50/85">
-              Zermatt · Swiss Alps
+              Matterhorn · Swiss Alps
             </span>
           </motion.div>
 

@@ -116,11 +116,14 @@ export function About() {
               />
             </div>
 
-            {/* Mobile fallback: simple stack of polaroids (no scroll-link
-                on mobile because the left column collapses below the text) */}
+            {/* Mobile fallback: 4 polaroids in a 2x2 grid (symmetrical).
+                Hidden on lg+ because the sticky stack handles it there. */}
             <div className="mt-10 grid grid-cols-2 gap-4 lg:hidden">
-              {milestones.slice(2, 5).map((m) => (
-                <Reveal key={m.year} className="relative aspect-[4/5] overflow-hidden rounded-2xl shadow-card">
+              {milestones.slice(1, 5).map((m) => (
+                <Reveal
+                  key={m.year}
+                  className="relative aspect-[4/5] overflow-hidden rounded-2xl shadow-card"
+                >
                   <Image
                     src={m.image}
                     alt={m.alt}
@@ -128,6 +131,12 @@ export function About() {
                     sizes="50vw"
                     className="object-cover"
                   />
+                  <div className="absolute inset-0 bg-gradient-to-t from-cocoa/55 via-transparent to-transparent" />
+                  <div className="absolute bottom-2.5 left-3 right-3 text-cream-50">
+                    <div className="text-[0.55rem] uppercase tracking-[0.22em] opacity-85">
+                      {m.where}
+                    </div>
+                  </div>
                 </Reveal>
               ))}
             </div>
