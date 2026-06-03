@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Plus, Clock, ShoppingBag, Award, Truck } from "lucide-react";
 import { Reveal } from "./Reveal";
@@ -60,6 +61,20 @@ export function OrderingGuide() {
       id="ordering"
       className="relative isolate bg-cocoa text-cream-50 overflow-hidden"
     >
+      {/* Alpine train backdrop — warm sunset viaduct, very faint, tinted to
+          cocoa so the copy stays perfectly legible. The motif the founders
+          love, woven into the page texture. */}
+      <div aria-hidden className="absolute inset-0 pointer-events-none">
+        <Image
+          src="/images/heritage/alps-viaduct-sunset.jpg"
+          alt=""
+          fill
+          sizes="100vw"
+          className="object-cover opacity-[0.14]"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-cocoa via-cocoa/80 to-cocoa" />
+      </div>
+
       <AlpineSilhouette
         tone="forest"
         className="absolute inset-x-0 bottom-0 w-full h-72 opacity-25"
