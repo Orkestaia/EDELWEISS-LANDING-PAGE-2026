@@ -89,58 +89,55 @@ export function NewsletterModal() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: reduce ? 0 : 20, scale: 0.98 }}
             transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-            className="relative w-full max-w-xl overflow-hidden rounded-[2rem] bg-cream-50 shadow-card border border-cocoa/10"
+            className="relative w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden rounded-[1.8rem] bg-cream-50 shadow-card border border-cocoa/10"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="absolute -top-12 -right-12 w-44 h-44 rounded-full bg-mustard/25 blur-2xl" />
-            <div className="absolute -bottom-16 -left-12 w-56 h-56 rounded-full bg-forest/15 blur-3xl" />
+            <div className="absolute -top-12 -right-12 w-40 h-40 rounded-full bg-mustard/25 blur-2xl" />
+            <div className="absolute -bottom-16 -left-12 w-52 h-52 rounded-full bg-forest/15 blur-3xl" />
 
             <button
               type="button"
               onClick={dismiss}
               aria-label="Close"
-              className="absolute top-4 right-4 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full bg-cream-100 text-cocoa/70 hover:text-cocoa hover:bg-cream-200 transition-colors"
+              className="absolute top-3.5 right-3.5 z-20 inline-flex h-9 w-9 items-center justify-center rounded-full bg-cream-100/90 backdrop-blur text-cocoa/70 hover:text-cocoa hover:bg-cream-200 transition-colors"
             >
               <X size={16} />
             </button>
 
-            <div className="relative p-7 sm:p-10">
+            <div className="relative overflow-y-auto p-6 sm:p-8">
               {/* Header */}
               <div className="flex items-center gap-3 text-forest">
-                <EdelweissMark size={32} />
-                <span className="text-[0.65rem] uppercase tracking-[0.32em]">
+                <EdelweissMark size={28} />
+                <span className="text-[0.62rem] uppercase tracking-[0.3em]">
                   Welcome · Grüezi
                 </span>
               </div>
               <h2
                 id="intro-modal-title"
-                className="mt-5 font-display text-3xl sm:text-[2.4rem] text-cocoa leading-[1.08]"
+                className="mt-4 font-display text-[1.7rem] sm:text-3xl text-cocoa leading-[1.1] pr-8"
               >
                 Ordering from us
-                <span className="block italic text-forest">
-                  is this simple.
-                </span>
+                <span className="italic text-forest"> is this simple.</span>
               </h2>
-              <p className="mt-3 text-sm text-cocoa/65 leading-relaxed">
-                Everything is baked fresh that morning. Here is how it works in
-                four small steps.
+              <p className="mt-2.5 text-sm text-cocoa/65 leading-relaxed">
+                Baked fresh every morning. Four small steps:
               </p>
 
               {/* Steps */}
-              <ol className="mt-7 space-y-4">
+              <ol className="mt-5 space-y-3.5">
                 {steps.map((s, i) => (
-                  <li key={s.title} className="flex items-start gap-4">
-                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-forest/10 text-forest font-display text-sm">
+                  <li key={s.title} className="flex items-start gap-3.5">
+                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-forest/10 text-forest font-display text-xs">
                       {String(i + 1).padStart(2, "0")}
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 text-cocoa">
                         <span className="text-forest/80">{s.icon}</span>
-                        <span className="font-display text-lg leading-tight">
+                        <span className="font-display text-base sm:text-lg leading-tight">
                           {s.title}
                         </span>
                       </div>
-                      <p className="mt-1 text-sm text-cocoa/70 leading-relaxed">
+                      <p className="mt-0.5 text-[0.82rem] text-cocoa/70 leading-snug">
                         {s.body}
                       </p>
                     </div>
@@ -149,23 +146,23 @@ export function NewsletterModal() {
               </ol>
 
               {/* Actions */}
-              <div className="mt-8 flex flex-wrap gap-3">
+              <div className="mt-6 flex flex-col sm:flex-row gap-2.5">
                 <Link
                   href="/#shop"
                   onClick={dismiss}
-                  className="inline-flex items-center gap-2 rounded-full bg-cocoa text-cream-50 px-6 py-3 text-xs uppercase tracking-[0.2em] hover:bg-rust transition-colors"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-cocoa text-cream-50 px-5 py-3 text-xs uppercase tracking-[0.2em] hover:bg-rust transition-colors"
                 >
                   Start your order
                 </Link>
                 <Link
                   href="/menu"
                   onClick={dismiss}
-                  className="inline-flex items-center gap-2 rounded-full border border-cocoa/20 text-cocoa px-6 py-3 text-xs uppercase tracking-[0.2em] hover:bg-cocoa hover:text-cream-50 transition-colors"
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-cocoa/20 text-cocoa px-5 py-3 text-xs uppercase tracking-[0.2em] hover:bg-cocoa hover:text-cream-50 transition-colors"
                 >
-                  Just browse the menu
+                  Browse the menu
                 </Link>
               </div>
-              <p className="mt-5 text-[0.7rem] text-cocoa/50">
+              <p className="mt-4 text-[0.68rem] text-cocoa/50 leading-relaxed">
                 Pick-up only · Tue–Sun, 7 am – 2 pm · 5 Alfred Street, Biddeford
               </p>
             </div>

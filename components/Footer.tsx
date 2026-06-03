@@ -1,21 +1,34 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Instagram, Facebook, Phone, Mail } from "lucide-react";
-import { EdelweissMark } from "./EdelweissMark";
 
 export function Footer() {
   return (
     <footer className="bg-cocoa text-cream-50/85">
+      {/* Brand crown — the Edelweiss flower, large and centered */}
+      <div className="border-b border-cream-50/10">
+        <div className="mx-auto max-w-7xl px-5 sm:px-8 pt-16 pb-12 flex flex-col items-center text-center">
+          <Image
+            src="/images/edelweiss-logo.png"
+            alt="Edelweiss Pastry Shop emblem"
+            width={140}
+            height={140}
+            className="w-24 h-24 sm:w-28 sm:h-28 animate-floaty"
+          />
+          <div className="mt-5 font-display text-3xl sm:text-4xl tracking-wide text-cream-50">
+            Edelweiss Pastry Shop
+          </div>
+          <div className="mt-3 text-[0.65rem] uppercase tracking-[0.34em] text-mustard">
+            Swiss-inspired · Biddeford, Maine
+          </div>
+        </div>
+      </div>
+
       <div className="mx-auto max-w-7xl px-5 sm:px-8 py-16 grid grid-cols-1 md:grid-cols-12 gap-10">
         <div className="md:col-span-5">
-          <div className="flex items-center gap-3 text-cream-50">
-            <EdelweissMark size={36} />
-            <span className="font-display text-2xl tracking-wide">
-              Edelweiss Pastry Shop
-            </span>
-          </div>
-          <p className="mt-5 max-w-sm text-sm leading-relaxed text-cream-50/65">
-            A Swiss-inspired bakery in Biddeford, Maine. Hand-made daily,
-            served with quiet hospitality.
+          <p className="max-w-sm text-sm leading-relaxed text-cream-50/65">
+            A Swiss-inspired bakery in downtown Biddeford, Maine. Hand-made
+            daily, served with quiet hospitality.
           </p>
           <div className="mt-5 space-y-2.5">
             <a
