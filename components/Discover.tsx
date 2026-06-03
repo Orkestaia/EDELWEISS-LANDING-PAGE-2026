@@ -8,12 +8,12 @@ import { Reveal } from "./Reveal";
 const cards = [
   {
     href: "/chocolates",
-    eyebrow: "Hand-rolled in small batches",
-    title: "The Chocolate Collection",
+    eyebrow: "Available only in-store",
+    title: "The Chocolate Boutique",
     body:
-      "Three Swiss truffles, ten seasonal bonbons, premium Felchlin chocolate. Made by hand, every week.",
+      "Hand-rolled Swiss truffles and a seasonal rotation of bonbons, made with premium Felchlin chocolate. Curated weekly at the counter — closer to jewelry than confection.",
     image: "/images/chocolates/hero-tray.jpg",
-    cta: "Explore chocolates",
+    cta: "Step inside the boutique",
     tone: "rust" as const,
   },
   {

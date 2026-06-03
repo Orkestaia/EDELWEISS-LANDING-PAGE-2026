@@ -119,11 +119,11 @@ export function AlpineHeritage() {
             style={reduce ? undefined : { scale: titleScale }}
             className="mt-7 font-display text-4xl sm:text-5xl lg:text-[4rem] leading-[1.04] origin-center"
           >
-            Trained at the foot
-            <span className="block italic text-mustard">of the Matterhorn.</span>
+            Where the craft
+            <span className="block italic text-mustard">was first learned.</span>
           </motion.h2>
 
-          {/* Founder line — revealed once fully "inside" the mountains */}
+          {/* Caption — revealed once fully "inside" the mountains */}
           <motion.p
             style={
               reduce
@@ -132,10 +132,10 @@ export function AlpineHeritage() {
             }
             className="mx-auto mt-7 max-w-xl text-base sm:text-lg leading-relaxed text-cream-50/85"
           >
-            In the shadow of Switzerland&apos;s most iconic peak, Alex spent
-            three months learning the Alpine craft — the patient lamination, the
-            slow-fermented breads, the quiet discipline of dawn. That same craft
-            now rises fresh every morning on Main Street, Biddeford.
+            In the quiet shadow of the Matterhorn, time moves differently.
+            Lamination is measured in hours, fermentation in days, mastery in
+            years. The Alps taught us a patience that still shapes every loaf,
+            every truffle, every croissant we bake on Main Street, Biddeford.
           </motion.p>
         </motion.div>
 

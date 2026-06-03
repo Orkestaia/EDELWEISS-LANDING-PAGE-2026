@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight, Leaf, GlassWater, Sparkles } from "lucide-react";
+import { Leaf, GlassWater, Sparkles, MapPin } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { Reveal } from "@/components/Reveal";
-import { SubPageHeader } from "@/components/SubPageHeader";
+import { EdelweissMark } from "@/components/EdelweissMark";
 import { AlpineSilhouette } from "@/components/AlpineBackground";
 import {
   chocolates,
@@ -15,9 +15,9 @@ import {
 } from "@/lib/chocolates";
 
 export const metadata: Metadata = {
-  title: "Chocolates · Edelweiss Pastry Shop",
+  title: "The Chocolate Boutique · Edelweiss Pastry Shop",
   description:
-    "Hand-made Swiss truffles and bonbons crafted with premium Felchlin chocolate. A seasonal collection that rotates with the year.",
+    "Hand-rolled Swiss truffles and seasonal bonbons crafted in small batches with premium Felchlin chocolate. Available exclusively in our Biddeford boutique.",
 };
 
 const allergenIcon = (a: string) => {
@@ -28,92 +28,115 @@ const allergenIcon = (a: string) => {
 
 export default function ChocolatesPage() {
   return (
-    <main className="min-h-screen bg-cream-50">
+    <main className="min-h-screen bg-cocoa text-cream-50">
       <Navbar />
-      <SubPageHeader
-        eyebrow="Chocolates"
-        title={
-          <>
-            Hand-rolled in Maine,
-            <span className="block italic text-forest">
-              with Swiss patience.
-            </span>
-          </>
-        }
-        description="Every truffle and bonbon is made by hand in small batches using premium Felchlin chocolate from Switzerland. Our seasonal collection rotates throughout the year — the list below is what is on our shelves right now."
-      />
 
-      {/* Hero strip */}
-      <section className="relative">
-        <div className="mx-auto max-w-7xl px-5 sm:px-8">
+      {/* ───── HERO STRIP (boutique presentation) ───── */}
+      <section className="relative pt-28 sm:pt-36">
+        <div className="mx-auto max-w-5xl px-5 sm:px-8 text-center">
           <Reveal>
-            <div className="relative aspect-[16/7] w-full overflow-hidden rounded-[2rem] shadow-card">
-              <Image
-                src="/images/chocolates/hero-tray.jpg"
-                alt="Tray of hand-made Edelweiss chocolates"
-                fill
-                priority
-                sizes="(max-width: 1024px) 100vw, 80vw"
-                className="object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-tr from-cocoa/60 via-cocoa/10 to-transparent" />
-              <div className="absolute bottom-8 left-8 right-8 sm:left-12 sm:bottom-12 text-cream-50">
-                <div className="text-[0.7rem] uppercase tracking-[0.3em] opacity-85">
-                  Premium Felchlin chocolate · made by hand
-                </div>
-                <div className="mt-3 font-display text-3xl sm:text-5xl max-w-2xl leading-[1.05]">
-                  Three truffles. Ten bonbons. One quiet obsession.
-                </div>
+            <div className="flex justify-center text-mustard">
+              <EdelweissMark size={42} />
+            </div>
+          </Reveal>
+          <Reveal delay={0.05}>
+            <p className="mt-6 text-[0.7rem] uppercase tracking-[0.34em] text-mustard/85">
+              The Chocolate Boutique
+            </p>
+          </Reveal>
+          <Reveal delay={0.08}>
+            <h1 className="mt-5 font-display text-4xl sm:text-6xl lg:text-[4.6rem] leading-[1.04]">
+              Hand-rolled in Maine,
+              <span className="block italic text-mustard">
+                with Swiss patience.
+              </span>
+            </h1>
+          </Reveal>
+          <Reveal delay={0.12}>
+            <p className="mx-auto mt-7 max-w-2xl text-base sm:text-lg leading-relaxed text-cream-50/80">
+              Each truffle and bonbon is made by hand, in small batches, using
+              premium Felchlin chocolate from Switzerland. A quiet, patient
+              craft — closer to jewelry than confection.
+            </p>
+          </Reveal>
+
+          {/* In-store-only callout (the key message) */}
+          <Reveal delay={0.18}>
+            <div className="mx-auto mt-12 max-w-3xl rounded-2xl border border-mustard/30 bg-cream-50/[0.04] backdrop-blur-sm px-6 py-7 sm:px-10 sm:py-9">
+              <div className="flex items-center justify-center gap-2 text-mustard">
+                <MapPin size={15} />
+                <span className="text-[0.7rem] uppercase tracking-[0.3em]">
+                  Available exclusively in our boutique
+                </span>
               </div>
+              <p className="mt-4 text-cream-50/85 leading-relaxed text-[0.98rem] sm:text-base">
+                Our chocolates are not sold online. The collection below is a
+                window into our craft — a curated selection that{" "}
+                <em className="text-mustard/90 not-italic font-medium">
+                  rotates with the seasons
+                </em>
+                . Not every piece shown here is in store at any given moment;
+                what is on the counter today depends on the week, the harvest,
+                and what Alex is tempering this morning.
+              </p>
+              <p className="mt-4 text-cream-50/65 text-sm">
+                Visit us Tuesday through Sunday, 7am – 2pm.{" "}
+                <Link
+                  href="/#visit"
+                  className="underline underline-offset-4 hover:text-mustard transition-colors"
+                >
+                  Find the boutique →
+                </Link>
+              </p>
             </div>
           </Reveal>
         </div>
       </section>
 
-      {/* Groups */}
-      <section className="relative isolate bg-cream-50 overflow-hidden">
-        <AlpineSilhouette
-          tone="cream"
-          className="absolute inset-x-0 bottom-0 w-full h-44 opacity-70"
-        />
-        <div className="mx-auto max-w-7xl px-5 sm:px-8 py-24 sm:py-32 space-y-24">
+      {/* ───── COLLECTION ───── */}
+      <section className="relative isolate mt-20 sm:mt-28">
+        <div className="mx-auto max-w-7xl px-5 sm:px-8 pb-24 sm:pb-32 space-y-20 sm:space-y-28">
           {chocolateGroups.map((group) => (
             <ChocolateGroupSection key={group} group={group} />
           ))}
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="bg-cocoa text-cream-50">
-        <div className="mx-auto max-w-5xl px-5 sm:px-8 py-20 sm:py-24 text-center">
+      {/* ───── ARTISTRY / father's craft strip ───── */}
+      <section className="relative isolate overflow-hidden border-t border-cream-50/10">
+        <AlpineSilhouette
+          tone="cream"
+          className="absolute inset-x-0 bottom-0 w-full h-44 opacity-[0.05]"
+        />
+        <div className="mx-auto max-w-4xl px-5 sm:px-8 py-24 sm:py-32 text-center">
           <Reveal>
-            <span className="inline-flex items-center gap-3 text-mustard uppercase tracking-[0.32em] text-xs">
-              <span className="w-8 h-px bg-mustard" />
-              Reserve a box
-            </span>
+            <p className="text-[0.7rem] uppercase tracking-[0.32em] text-mustard/80">
+              A family craft
+            </p>
           </Reveal>
           <Reveal delay={0.05}>
-            <h2 className="mt-5 font-display text-4xl sm:text-5xl leading-[1.05]">
-              Bring home a curated box
+            <h2 className="mt-5 font-display text-3xl sm:text-5xl leading-[1.08]">
+              Closer to a jewelry counter
               <span className="block italic text-mustard">
-                of our latest collection.
+                than a candy shelf.
               </span>
             </h2>
           </Reveal>
           <Reveal delay={0.1}>
-            <p className="mt-5 max-w-xl mx-auto text-cream-50/80">
-              Order online for in-store pick-up and we will pack a fresh
-              assortment of the week&apos;s rotation.
+            <p className="mx-auto mt-7 max-w-2xl text-cream-50/75 leading-relaxed">
+              We invite you to step inside, take your time at the counter, and
+              build the assortment that is right for you. Six pieces, twelve,
+              twenty-four — a single 65% Maracaibo or one of everything. We
+              will pack it by hand.
             </p>
           </Reveal>
           <Reveal delay={0.15}>
-            <div className="mt-9 flex flex-wrap items-center justify-center gap-4">
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
               <Link
-                href="/#shop"
+                href="/#visit"
                 className="inline-flex items-center gap-2 rounded-full bg-mustard text-cocoa px-7 py-3.5 text-sm uppercase tracking-[0.22em] hover:bg-cream-50 transition-colors"
               >
-                Order chocolates
-                <ArrowUpRight size={15} />
+                Visit the boutique
               </Link>
               <Link
                 href="/menu"
@@ -135,58 +158,80 @@ function ChocolateGroupSection({ group }: { group: ChocolateGroup }) {
   const items = chocolates.filter((c) => c.group === group);
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 pb-6 border-b border-cocoa/15">
+      {/* Group header */}
+      <div className="text-center max-w-3xl mx-auto pb-12 border-b border-cream-50/10">
         <Reveal>
-          <h2 className="font-display text-3xl sm:text-4xl text-cocoa">
+          <p className="text-[0.7rem] uppercase tracking-[0.32em] text-mustard/85">
+            {group === "Truffles"
+              ? "The permanent collection"
+              : group === "Bonbons"
+              ? "Seasonal rotation"
+              : "The 2026 collection"}
+          </p>
+        </Reveal>
+        <Reveal delay={0.05}>
+          <h2 className="mt-4 font-display text-3xl sm:text-5xl leading-[1.06]">
             {group}
           </h2>
         </Reveal>
-        <Reveal delay={0.05} className="max-w-md">
-          <p className="text-sm text-cocoa/65 leading-relaxed">
+        <Reveal delay={0.08}>
+          <p className="mx-auto mt-4 max-w-xl text-sm sm:text-base text-cream-50/65 leading-relaxed">
             {chocolateGroupDescriptions[group]}
           </p>
         </Reveal>
       </div>
 
-      <ul className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+      <ul className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-14 sm:gap-y-16">
         {items.map((c, i) => (
           <Reveal key={c.slug} delay={(i % 3) * 0.05} as="li">
-            <article className="group h-full rounded-[1.4rem] bg-cream-100 overflow-hidden shadow-soft hover:shadow-card transition-shadow">
-              <div className="relative aspect-[5/4] w-full overflow-hidden bg-cocoa">
+            <figure className="group text-center">
+              {/* Pedestal / spotlight */}
+              <div className="relative mx-auto aspect-square w-44 sm:w-52 lg:w-56">
+                <div
+                  aria-hidden
+                  className="absolute inset-0 rounded-full bg-mustard/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+                />
                 <Image
                   src={c.image}
                   alt={c.name}
                   fill
-                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                  className="object-cover transition-transform duration-[1200ms] ease-out group-hover:scale-[1.05]"
+                  sizes="(max-width: 640px) 70vw, (max-width: 1024px) 30vw, 220px"
+                  className="object-contain transition-transform duration-[1200ms] ease-out group-hover:scale-[1.06]"
                 />
               </div>
-              <div className="p-6 sm:p-7">
-                <h3 className="font-display text-2xl text-cocoa leading-tight">
+
+              <figcaption className="mt-6">
+                <h3 className="font-display text-2xl sm:text-[1.6rem] text-cream-50 leading-tight">
                   {c.name}
                 </h3>
-                <p className="mt-3 text-sm leading-relaxed text-cocoa/75">
+                <p className="mt-3 mx-auto max-w-xs text-sm leading-relaxed text-cream-50/65">
                   {c.description}
                 </p>
-                <div className="mt-5 text-[0.7rem] uppercase tracking-[0.22em] text-cocoa/55">
-                  Ingredients
-                </div>
-                <p className="mt-1 text-xs text-cocoa/70 leading-relaxed">
-                  {c.ingredients}
-                </p>
-                <div className="mt-5 flex flex-wrap gap-2">
-                  {c.allergens.map((a) => (
-                    <span
-                      key={a}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-cream-50 border border-cocoa/10 px-2.5 py-1 text-[0.65rem] uppercase tracking-[0.18em] text-cocoa/65"
-                    >
-                      {allergenIcon(a)}
-                      {a}
+
+                <details className="group/details mt-5 text-left mx-auto max-w-xs">
+                  <summary className="cursor-pointer list-none flex items-center justify-center gap-2 text-[0.65rem] uppercase tracking-[0.28em] text-mustard/75 hover:text-mustard transition-colors">
+                    <span>Ingredients &amp; allergens</span>
+                    <span className="transition-transform group-open/details:rotate-90">
+                      ›
                     </span>
-                  ))}
-                </div>
-              </div>
-            </article>
+                  </summary>
+                  <div className="mt-4 text-xs leading-relaxed text-cream-50/70">
+                    {c.ingredients}
+                  </div>
+                  <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+                    {c.allergens.map((a) => (
+                      <span
+                        key={a}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-cream-50/20 px-2.5 py-1 text-[0.6rem] uppercase tracking-[0.18em] text-cream-50/70"
+                      >
+                        {allergenIcon(a)}
+                        {a}
+                      </span>
+                    ))}
+                  </div>
+                </details>
+              </figcaption>
+            </figure>
           </Reveal>
         ))}
       </ul>
