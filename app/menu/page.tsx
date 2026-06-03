@@ -107,15 +107,13 @@ export default function MenuPage() {
 
           <Reveal>
             <div className="mt-16 flex flex-wrap justify-center gap-4">
-              <a
-                href="#order"
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                href="/#shop"
                 className="inline-flex items-center gap-2 rounded-full bg-cocoa text-cream-50 px-7 py-3.5 text-sm uppercase tracking-[0.22em] hover:bg-rust transition-colors"
               >
                 Order for pick-up
                 <ArrowUpRight size={15} />
-              </a>
+              </Link>
               <Link
                 href="/chocolates"
                 className="inline-flex items-center gap-2 rounded-full border border-cocoa/25 text-cocoa px-7 py-3.5 text-sm uppercase tracking-[0.22em] hover:bg-cocoa hover:text-cream-50 transition-colors"

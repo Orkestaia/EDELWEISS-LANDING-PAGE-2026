@@ -2,14 +2,17 @@
 
 import Image from "next/image";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Plus, Check } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import {
   products,
   categories,
   categoryDescriptions,
+  type Product,
   type ProductCategory,
 } from "@/lib/products";
+import { useCart, parsePrice } from "@/lib/cart";
 import { Reveal } from "./Reveal";
 
 export function Showcase() {
@@ -61,7 +64,7 @@ function ShowcaseHeader() {
       <Reveal delay={0.1} className="max-w-md text-cocoa/75">
         <p className="text-lg leading-relaxed">
           The full catalog of what we bake — organized the way our shelves are.
-          Tap any pastry to reserve yours for pick-up.
+          Add what you love to your order and pick it up fresh.
         </p>
       </Reveal>
     </div>
@@ -116,69 +119,109 @@ function CategorySection({ category }: { category: ProductCategory }) {
 
       <ul className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
         {items.map((p, i) => (
-          <motion.li
-            key={p.slug}
-            initial={{ opacity: 0, y: reduce ? 0 : 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.2 }}
-            transition={{
-              duration: 0.6,
-              delay: (i % 6) * 0.05,
-              ease: [0.22, 1, 0.36, 1],
-            }}
-            className="group relative"
-          >
-            <a
-              href="#order"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block h-full"
-            >
-              <article className="h-full rounded-[1.6rem] overflow-hidden bg-cream-100 shadow-soft hover:shadow-card transition-shadow border border-cocoa/5">
-                {/* Image: object-contain on cream so the whole product shows */}
-                <div className="relative aspect-[5/4] w-full overflow-hidden bg-cream-50">
-                  <Image
-                    src={p.image}
-                    alt={p.name}
-                    fill
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    className="object-contain p-5 transition-transform duration-[1200ms] ease-out group-hover:scale-[1.04]"
-                  />
-
-                  {p.tag && (
-                    <span className="absolute top-4 left-4 inline-flex items-center gap-1 rounded-full bg-mustard/95 px-3 py-1 text-[0.65rem] uppercase tracking-[0.22em] text-cocoa">
-                      {p.tag}
-                    </span>
-                  )}
-                  {p.price && (
-                    <span className="absolute top-4 right-4 inline-flex items-center rounded-full bg-cocoa text-cream-50 px-3 py-1 text-xs font-display tabular-nums">
-                      {p.price}
-                    </span>
-                  )}
-                </div>
-
-                {/* Caption */}
-                <div className="p-6 sm:p-7 flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[0.65rem] uppercase tracking-[0.22em] text-rust/80">
-                      {p.category}
-                    </div>
-                    <h4 className="mt-1.5 font-display text-xl sm:text-2xl text-cocoa leading-tight">
-                      {p.name}
-                    </h4>
-                    <p className="mt-2 text-sm text-cocoa/65 leading-relaxed line-clamp-2">
-                      {p.description}
-                    </p>
-                  </div>
-                  <span className="mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cream-50 border border-cocoa/10 text-cocoa transition-transform duration-500 group-hover:rotate-45 group-hover:bg-rust group-hover:text-cream-50 group-hover:border-rust">
-                    <ArrowUpRight size={15} />
-                  </span>
-                </div>
-              </article>
-            </a>
-          </motion.li>
+          <ProductCard key={p.slug} product={p} index={i} reduce={!!reduce} />
         ))}
       </ul>
     </div>
+  );
+}
+
+function ProductCard({
+  product: p,
+  index,
+  reduce,
+}: {
+  product: Product;
+  index: number;
+  reduce: boolean;
+}) {
+  const { addItem } = useCart();
+  const [added, setAdded] = useState(false);
+  const priceValue = parsePrice(p.price);
+
+  function handleAdd() {
+    if (priceValue == null) return;
+    addItem({ slug: p.slug, name: p.name, price: priceValue, image: p.image });
+    setAdded(true);
+    window.setTimeout(() => setAdded(false), 1400);
+  }
+
+  return (
+    <motion.li
+      initial={{ opacity: 0, y: reduce ? 0 : 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.2 }}
+      transition={{
+        duration: 0.6,
+        delay: (index % 6) * 0.05,
+        ease: [0.22, 1, 0.36, 1],
+      }}
+      className="group relative"
+    >
+      <article className="flex h-full flex-col rounded-[1.6rem] overflow-hidden bg-cream-100 shadow-soft hover:shadow-card transition-shadow border border-cocoa/5">
+        <div className="relative aspect-[5/4] w-full overflow-hidden bg-cream-50">
+          <Image
+            src={p.image}
+            alt={p.name}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            className="object-contain p-5 transition-transform duration-[1200ms] ease-out group-hover:scale-[1.04]"
+          />
+          {p.tag && (
+            <span className="absolute top-4 left-4 inline-flex items-center gap-1 rounded-full bg-mustard/95 px-3 py-1 text-[0.65rem] uppercase tracking-[0.22em] text-cocoa">
+              {p.tag}
+            </span>
+          )}
+        </div>
+
+        {/* Caption */}
+        <div className="flex flex-1 flex-col p-6 sm:p-7">
+          <div className="text-[0.65rem] uppercase tracking-[0.22em] text-rust">
+            {p.category}
+          </div>
+          <h4 className="mt-1.5 font-display text-xl sm:text-2xl text-cocoa leading-tight">
+            {p.name}
+          </h4>
+          <p className="mt-2 text-sm text-cocoa/70 leading-relaxed">
+            {p.description}
+          </p>
+
+          {/* Price + Add to cart */}
+          <div className="mt-5 flex items-center justify-between gap-3 pt-4 border-t border-cocoa/10">
+            {priceValue != null ? (
+              <span className="font-display text-2xl sm:text-[1.7rem] text-cocoa tabular-nums">
+                {p.price}
+              </span>
+            ) : (
+              <span className="text-xs uppercase tracking-[0.18em] text-cocoa/50">
+                In-store only
+              </span>
+            )}
+
+            {priceValue != null && (
+              <button
+                onClick={handleAdd}
+                aria-label={`Add ${p.name} to cart`}
+                className={`inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-xs uppercase tracking-[0.16em] transition-colors ${
+                  added
+                    ? "bg-forest text-cream-50"
+                    : "bg-cocoa text-cream-50 hover:bg-rust"
+                }`}
+              >
+                {added ? (
+                  <>
+                    <Check size={15} /> Added
+                  </>
+                ) : (
+                  <>
+                    <Plus size={15} /> Add
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+      </article>
+    </motion.li>
   );
 }

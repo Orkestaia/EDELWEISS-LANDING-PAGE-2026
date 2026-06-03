@@ -30,6 +30,15 @@ yarn-error.log*
 # vercel
 .vercel
 
+# claude code (local tooling)
+.claude/
+
+# internal project docs — kept LOCAL only (repo is public)
+/CLAUDE.md
+/SECURITY.md
+/CLOVER_SETUP.md
+/meetings/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

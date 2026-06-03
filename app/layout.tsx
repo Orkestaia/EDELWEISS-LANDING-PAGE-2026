@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Inter } from "next/font/google";
 import "./globals.css";
+import { CartProvider } from "@/lib/cart";
+import { CartDrawer } from "@/components/CartDrawer";
+import { CartButton } from "@/components/CartButton";
 
 const display = Cormorant_Garamond({
   subsets: ["latin"],
@@ -69,7 +72,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${display.variable} ${sans.variable}`}>
-      <body>{children}</body>
+      <body>
+        <CartProvider>
+          {children}
+          <CartDrawer />
+          <CartButton />
+        </CartProvider>
+      </body>
     </html>
   );
 }

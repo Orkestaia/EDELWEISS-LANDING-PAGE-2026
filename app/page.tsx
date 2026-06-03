@@ -1,8 +1,10 @@
 import { Navbar } from "@/components/Navbar";
 import { Hero } from "@/components/Hero";
+import { AlpineHeritage } from "@/components/AlpineHeritage";
 import { About } from "@/components/About";
 import { Showcase } from "@/components/Showcase";
 import { Discover } from "@/components/Discover";
+import { Reviews } from "@/components/Reviews";
 import { OrderingGuide } from "@/components/OrderingGuide";
 import { Visit } from "@/components/Visit";
 import { Newsletter } from "@/components/Newsletter";
@@ -15,8 +17,10 @@ export default function Home() {
       <Navbar />
       <Hero />
       <Showcase />
+      <AlpineHeritage />
       <About />
       <Discover />
+      <Reviews />
       <OrderingGuide />
       <Visit />
       <Newsletter />

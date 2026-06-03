@@ -72,9 +72,19 @@ const config: Config = {
           "0%, 100%": { transform: "translateY(0px)" },
           "50%": { transform: "translateY(-8px)" },
         },
+        kenburns: {
+          "0%": { transform: "scale(1) translate3d(0, 0, 0)" },
+          "100%": { transform: "scale(1.16) translate3d(-1.5%, -1%, 0)" },
+        },
+        marquee: {
+          "0%": { transform: "translateX(0)" },
+          "100%": { transform: "translateX(-50%)" },
+        },
       },
       animation: {
         floaty: "floaty 7s ease-in-out infinite",
+        kenburns: "kenburns 22s ease-in-out infinite alternate",
+        marquee: "marquee 50s linear infinite",
       },
     },
   },

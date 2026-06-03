@@ -167,6 +167,7 @@ export const products: Product[] = [
       "Almond and brown-butter cake crowned with the fruit of the season.",
     image: "/images/products/financier.jpg",
     price: "$9.00",
+    tag: "GF",
   },
   {
     slug: "streusel-kuchen",
@@ -232,14 +233,7 @@ export const products: Product[] = [
     image: "/images/products/vanilla-kuchen.jpg",
     price: "$6.00",
   },
-  {
-    slug: "carrot-cake",
-    name: "Carrot Cake",
-    category: "Pastries",
-    description:
-      "Spiced sponge with walnut crunch, finished with whipped cream cheese frosting and citrus peel.",
-    image: "/images/products/carrot-cake.jpg",
-  },
+  // (Carrot Cake removed — seasonal item, not sold online per reunión 2026-05-20)
 
   // --- Cookies ---
   {

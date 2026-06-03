@@ -108,15 +108,13 @@ export default function ChocolatesPage() {
           </Reveal>
           <Reveal delay={0.15}>
             <div className="mt-9 flex flex-wrap items-center justify-center gap-4">
-              <a
-                href="#order"
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                href="/#shop"
                 className="inline-flex items-center gap-2 rounded-full bg-mustard text-cocoa px-7 py-3.5 text-sm uppercase tracking-[0.22em] hover:bg-cream-50 transition-colors"
               >
                 Order chocolates
                 <ArrowUpRight size={15} />
-              </a>
+              </Link>
               <Link
                 href="/menu"
                 className="inline-flex items-center gap-2 rounded-full border border-cream-50/30 text-cream-50 px-7 py-3.5 text-sm uppercase tracking-[0.22em] hover:bg-cream-50/10 transition-colors"

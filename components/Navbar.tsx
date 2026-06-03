@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { EdelweissMark } from "./EdelweissMark";
+import { useCart } from "@/lib/cart";
 
 const nav: { href: string; label: string }[] = [
   { href: "/#shop", label: "Shop" },
@@ -16,6 +17,7 @@ const nav: { href: string; label: string }[] = [
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const { open: openCart, count } = useCart();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -62,14 +64,19 @@ export function Navbar() {
           </nav>
 
           <div className="hidden lg:block">
-            <a
-              href="#order"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center rounded-full bg-cocoa text-cream-50 px-5 py-2.5 text-xs tracking-[0.22em] uppercase hover:bg-rust transition-colors"
+            <button
+              type="button"
+              onClick={openCart}
+              className="inline-flex items-center gap-2 rounded-full bg-cocoa text-cream-50 px-5 py-2.5 text-xs tracking-[0.22em] uppercase hover:bg-rust transition-colors"
             >
+              <ShoppingBag size={15} />
               Order online
-            </a>
+              {count > 0 && (
+                <span className="grid h-5 min-w-5 place-items-center rounded-full bg-mustard px-1 text-[0.7rem] font-semibold text-cocoa tabular-nums">
+                  {count}
+                </span>
+              )}
+            </button>
           </div>
 
           <button
@@ -96,15 +103,17 @@ export function Navbar() {
                 {n.label}
               </Link>
             ))}
-            <a
-              href="#order"
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => setOpen(false)}
-              className="mt-2 inline-flex w-full items-center justify-center rounded-full bg-cocoa text-cream-50 px-5 py-3 text-sm tracking-[0.2em] uppercase"
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                openCart();
+              }}
+              className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-full bg-cocoa text-cream-50 px-5 py-3 text-sm tracking-[0.2em] uppercase"
             >
+              <ShoppingBag size={16} />
               Order online
-            </a>
+            </button>
             <a
               href="tel:+12077706945"
               className="text-cocoa/70 text-xs tracking-[0.2em] uppercase"
