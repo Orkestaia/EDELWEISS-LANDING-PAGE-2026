@@ -54,3 +54,23 @@ body {
   );
   background-size: 14px 14px;
 }
+
+/* Checkout form inputs */
+.cf-input {
+  width: 100%;
+  border-radius: 0.9rem;
+  background-color: #fbf7ec;
+  border: 1px solid rgba(58, 46, 32, 0.15);
+  padding: 0.85rem 1rem;
+  font-size: 0.95rem;
+  color: var(--color-cocoa);
+  transition: border-color 0.2s, background-color 0.2s;
+}
+.cf-input::placeholder {
+  color: rgba(58, 46, 32, 0.4);
+}
+.cf-input:focus {
+  outline: none;
+  border-color: var(--color-rust);
+  background-color: #fff;
+}

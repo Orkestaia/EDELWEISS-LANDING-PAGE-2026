@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { Minus, Plus, X, ShoppingBag } from "lucide-react";
 import { useCart, formatPrice } from "@/lib/cart";
@@ -140,17 +141,13 @@ export function CartDrawer() {
                   Pick-up only · Tuesday–Sunday, 7am–2pm. You&apos;ll choose your
                   pick-up time at checkout.
                 </p>
-                <button
-                  className="w-full rounded-full bg-cocoa px-6 py-4 text-sm uppercase tracking-[0.2em] text-cream-50 hover:bg-rust transition-colors"
-                  onClick={() => {
-                    // TODO (siguiente fase): flujo de checkout -> POST /api/clover/orders
-                    alert(
-                      "Checkout en construcción — el siguiente paso conecta esto con Clover para crear el pedido y cobrar."
-                    );
-                  }}
+                <Link
+                  href="/checkout"
+                  onClick={close}
+                  className="block w-full rounded-full bg-cocoa px-6 py-4 text-center text-sm uppercase tracking-[0.2em] text-cream-50 hover:bg-rust transition-colors"
                 >
                   Continue to checkout
-                </button>
+                </Link>
               </div>
             )}
           </motion.aside>
