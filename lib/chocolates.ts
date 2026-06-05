@@ -14,10 +14,10 @@ export const chocolates: Chocolate[] = [
   // Truffles
   {
     slug: "white-chocolate-kirsch",
-    name: "White Chocolate & Kirsch",
+    name: "White Chocolate with Kirsch Brandy",
     group: "Truffles",
     description:
-      "Velvety white chocolate ganache lifted with a measured pour of Swiss kirsch.",
+      "Velvety white chocolate ganache lifted with a measured pour of Kirsch Brandy.",
     ingredients:
       "White Chocolate · Cream · Butter · Glucose · Kirsch · Sorbitol · Sea Salt",
     allergens: ["Dairy", "Soy", "Alcohol"],

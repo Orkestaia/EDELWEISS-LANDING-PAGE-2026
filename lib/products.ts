@@ -40,7 +40,7 @@ export const products: Product[] = [
     name: "Almond Croissant",
     category: "Breakfast",
     description:
-      "Twice-baked with Madagascar almond cream, toasted slivers and a soft kiss of powdered sugar.",
+      "Twice-baked with almond cream, toasted slivers and a soft kiss of powdered sugar.",
     image: "/images/products/almond-croissant.jpg",
     price: "$6.00",
   },
@@ -87,7 +87,7 @@ export const products: Product[] = [
     name: "Blueberry & Lemon Scone",
     category: "Breakfast",
     description:
-      "Buttery scone studded with Maine blueberries and brightened with lemon zest.",
+      "Buttery scone studded with Maine blueberries and brightened with candied lemon.",
     image: "/images/products/blueberry-scone.jpg",
     price: "$4.00",
   },
@@ -140,11 +140,11 @@ export const products: Product[] = [
     price: "$7.00",
   },
   {
-    slug: "rye-sesame",
-    name: "Rye & Sesame Bread",
+    slug: "maine-grains-wheat",
+    name: "Maine Grains Whole Wheat",
     category: "Breads",
     description:
-      "Naturally leavened rye and wheat with a toasted sesame crust. Dense, fragrant, alive.",
+      "Naturally leavened whole wheat with a toasted sesame crust. Dense, fragrant, alive.",
     image: "/images/products/rye-sesame.jpg",
     price: "$6.50",
   },
@@ -192,7 +192,7 @@ export const products: Product[] = [
     name: "Seasonal Chocolate Tart",
     category: "Pastries",
     description:
-      "Crisp pâte sucrée, dark chocolate cremeux, fruit pearls and roasted cocoa nibs.",
+      "Dark chocolate seasonal ganache with fluid gel and cocoa nibs.",
     image: "/images/products/chocolate-tart.jpg",
     price: "$7.50",
   },
@@ -220,7 +220,7 @@ export const products: Product[] = [
     name: "Lemon Square",
     category: "Pastries",
     description:
-      "Buttery shortbread base and a vibrant Maine lemon curd, finished with a dusting of sugar.",
+      "Buttery shortbread base and a vibrant lemon curd, finished with a dusting of sugar.",
     image: "/images/products/lemon-square.jpg",
     price: "$7.00",
   },
@@ -241,7 +241,7 @@ export const products: Product[] = [
     name: "Chocolate Chip Cookie",
     category: "Cookies",
     description:
-      "Brown-butter dough, dark chocolate chunks and flaky sea salt. Best slightly warm.",
+      "Brown-butter dough and dark chocolate chunks. Best slightly warm.",
     image: "/images/products/chocolate-chip-cookie.jpg",
     price: "$3.00",
   },
@@ -259,7 +259,7 @@ export const products: Product[] = [
     name: "Chocolate Sablé",
     category: "Cookies",
     description:
-      "Crunchy chocolate sablé with Ovaltine and chocolate chunks. Three pieces per bag.",
+      "Crunchy chocolate sablé with chocolate chunks. Three pieces per bag.",
     image: "/images/products/chocolate-sable.jpg",
     price: "$6.00",
   },
@@ -279,7 +279,7 @@ export const products: Product[] = [
     name: "House Granola",
     category: "Granola",
     description:
-      "Slow-toasted oats, maple syrup, almonds and Maine cranberries. Crunchy clusters, jar-ready.",
+      "Slow-toasted oats, maple syrup, pecans, almonds, sunflower seeds and pumpkin seeds. Crunchy clusters, jar-ready.",
     image: "/images/products/granola.jpg",
   },
 ];
