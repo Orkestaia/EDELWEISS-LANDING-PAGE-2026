@@ -131,6 +131,15 @@ export const products: Product[] = [
 
   // --- Breads ---
   {
+    slug: "zopf",
+    name: "Zopf",
+    category: "Breads",
+    description:
+      "The Sunday loaf of the Swiss table — enriched with milk and butter, brushed with egg yolk, braided by hand.",
+    image: "/images/products/zopf-new.jpg",
+    price: "$7.00",
+  },
+  {
     slug: "braided-zopf",
     name: "Braided Zopf",
     category: "Breads",

@@ -39,9 +39,8 @@ export function Visit() {
           <Reveal delay={0.1}>
             <p className="mt-6 text-lg leading-relaxed text-cocoa/75 max-w-lg">
               You will find us in downtown Biddeford, just off Main Street —
-              Maine&apos;s little corner of the Swiss Alps. The kettle is
-              always on, the bench is always full of pastry, and we love
-              seeing new faces.
+              Maine&apos;s little corner of the Swiss Alps. The bench is
+              always full of pastry, and we love seeing new faces.
             </p>
           </Reveal>
 

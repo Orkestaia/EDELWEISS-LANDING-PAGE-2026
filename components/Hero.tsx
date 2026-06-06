@@ -161,9 +161,9 @@ export function Hero() {
               transition={{ duration: 0.95, delay: 0.22, ease: [0.22, 1, 0.36, 1] }}
               className="mx-auto lg:mx-0 mt-6 max-w-xl text-base sm:text-lg leading-relaxed text-cocoa/80"
             >
-              Hand-laminated croissants, slow-fermented Swiss breads,
-              century-old pastries and small-batch chocolates — made from
-              scratch on Alfred Street, in downtown Biddeford.
+              Hand-laminated croissants, century-old pastries and
+              small-batch chocolates — made from scratch on Alfred Street,
+              in downtown Biddeford.
             </motion.p>
 
             <motion.div

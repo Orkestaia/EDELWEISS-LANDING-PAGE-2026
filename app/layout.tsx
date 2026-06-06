@@ -62,7 +62,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     title: "Edelweiss Pastry Shop · Swiss-inspired Bakery in Biddeford, Maine",
     description:
-      "Hand-laminated croissants, slow-fermented Swiss breads, century-old pastries and small-batch chocolates — baked daily at 5 Alfred Street, Biddeford, Maine.",
+      "Hand-laminated croissants, century-old pastries and small-batch chocolates — baked daily at 5 Alfred Street, Biddeford, Maine.",
     siteName: "Edelweiss Pastry Shop",
   },
   twitter: {

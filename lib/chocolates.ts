@@ -21,7 +21,7 @@ export const chocolates: Chocolate[] = [
     ingredients:
       "White Chocolate · Cream · Butter · Glucose · Kirsch · Sorbitol · Sea Salt",
     allergens: ["Dairy", "Soy", "Alcohol"],
-    image: "/images/chocolates/truffle-trio.jpg",
+    image: "/images/chocolates/truffle-white-kirsch.jpg",
   },
   {
     slug: "milk-chocolate",
@@ -32,7 +32,7 @@ export const chocolates: Chocolate[] = [
     ingredients:
       "Milk Chocolate · Cream · Butter · Glucose · Invert Sugar · Sorbitol · Sea Salt",
     allergens: ["Dairy", "Soy"],
-    image: "/images/chocolates/bonbon-1.jpg",
+    image: "/images/chocolates/truffle-milk.jpg",
   },
   {
     slug: "maracaibo-65",
