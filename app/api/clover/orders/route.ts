@@ -27,6 +27,9 @@ const isSandbox = process.env.NEXT_PUBLIC_ENV === "sandbox";
 const CLOVER_API_URL = isSandbox
   ? "https://apisandbox.dev.clover.com"
   : "https://api.clover.com";
+const SCL_URL = isSandbox
+  ? "https://scl.sandbox.dev.clover.com"
+  : "https://scl.clover.com";
 
 // Franjas de recogida permitidas (última a la 1pm porque cierran a las 2pm).
 const ALLOWED_SLOTS = [
@@ -48,7 +51,10 @@ function getCredentials() {
   const apiToken = isSandbox
     ? process.env.CLOVER_SANDBOX_API_TOKEN
     : process.env.CLOVER_API_TOKEN;
-  return { merchantId, apiToken };
+  const ecommerceToken = isSandbox
+    ? process.env.CLOVER_SANDBOX_ECOMMERCE_TOKEN
+    : process.env.CLOVER_ECOMMERCE_TOKEN;
+  return { merchantId, apiToken, ecommerceToken };
 }
 
 interface OrderItem {
@@ -106,8 +112,8 @@ function validate(body: any): { valid: boolean; error?: string } {
 }
 
 export async function POST(request: NextRequest) {
-  const { merchantId, apiToken } = getCredentials();
-  if (!merchantId || !apiToken) {
+  const { merchantId, apiToken, ecommerceToken } = getCredentials();
+  if (!merchantId || !apiToken || !ecommerceToken) {
     return NextResponse.json(
       { error: "Online ordering is not configured yet. Please call the shop." },
       { status: 503 }
@@ -148,7 +154,7 @@ export async function POST(request: NextRequest) {
       `Email: ${customer.email}`,
       `Pick-up: ${pickupDate} at ${pickupSlot}`,
       notes ? `Notes: ${notes}` : null,
-      "Payment: pay at pick-up",
+      "Payment: paid online by card",
     ]
       .filter(Boolean)
       .join("\n");
@@ -207,12 +213,53 @@ export async function POST(request: NextRequest) {
 
     const total = items.reduce((s, it) => s + it.price * it.quantity, 0);
 
+    // 3. Crear sesión de Hosted Checkout (pago online con tarjeta).
+    const origin = request.nextUrl.origin;
+    const firstName = customer.name.split(" ")[0];
+    const lastName = customer.name.split(" ").slice(1).join(" ") || firstName;
+
+    const checkoutRes = await fetch(`${SCL_URL}/v1/checkouts`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${ecommerceToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        customer: {
+          email: customer.email,
+          firstName,
+          lastName,
+          ...(customer.phone ? { phoneNumber: customer.phone } : {}),
+        },
+        shoppingCart: {
+          lineItems: items.map((it) => ({
+            name: it.quantity > 1 ? `${it.name} × ${it.quantity}` : it.name,
+            unitAmount: Math.round(it.price * 100),
+            quantity: it.quantity,
+          })),
+        },
+        redirectUrl: `${origin}/checkout/confirm?orderId=${orderId}`,
+      }),
+    });
+
+    if (!checkoutRes.ok) {
+      const errText = await checkoutRes.text();
+      console.error("[Clover Checkout] hosted checkout failed:", errText);
+      return NextResponse.json(
+        { error: "Could not start the payment session. Please try again." },
+        { status: 502 }
+      );
+    }
+
+    const checkoutData = await checkoutRes.json();
+    const checkoutUrl: string = checkoutData.href;
+
     console.log(
-      `[Clover Orders] Created ${orderId} for ${customer.name} — pickup ${pickupDate} ${pickupSlot}`
+      `[Clover Orders] Created ${orderId} for ${customer.name} — pickup ${pickupDate} ${pickupSlot} — checkout ${checkoutUrl}`
     );
 
     return NextResponse.json({
-      success: true,
+      checkoutUrl,
       orderId,
       pickup: { date: pickupDate, slot: pickupSlot },
       total,

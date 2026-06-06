@@ -3,19 +3,12 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import { Check, Clock, ShoppingBag, ArrowLeft, Loader2 } from "lucide-react";
+import { Clock, ShoppingBag, ArrowLeft, Loader2 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { useCart, formatPrice } from "@/lib/cart";
 
-type Status = "idle" | "submitting" | "success" | "error";
-
-interface OrderResult {
-  orderId: string;
-  pickup: { date: string; slot: string };
-  total: number;
-}
+type Status = "idle" | "submitting" | "error";
 
 /** Genera las próximas ~14 fechas válidas (sin lunes). */
 function buildPickupDates() {
@@ -74,7 +67,6 @@ export default function CheckoutPage() {
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<OrderResult | null>(null);
 
   const slots = useMemo(() => {
     const wd = dates.find((d) => d.value === pickupDate)?.weekday ?? 2;
@@ -107,71 +99,23 @@ export default function CheckoutPage() {
         setStatus("error");
         return;
       }
-      setResult(data);
-      setStatus("success");
+      // Guardamos datos del cliente para la página de confirmación.
+      sessionStorage.setItem(
+        "edelweiss_order",
+        JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          pickupDate,
+          pickupSlot,
+          total: data.total,
+        })
+      );
       clear();
+      window.location.href = data.checkoutUrl;
     } catch {
       setError("Network error. Please check your connection and try again.");
       setStatus("error");
     }
-  }
-
-  // ─── Confirmation ───────────────────────────────────────────────
-  if (status === "success" && result) {
-    return (
-      <main className="min-h-screen bg-cream-50">
-        <Navbar />
-        <section className="mx-auto max-w-2xl px-5 sm:px-8 pt-36 pb-28 text-center">
-          <motion.div
-            initial={{ scale: 0.6, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-forest text-cream-50"
-          >
-            <Check size={34} />
-          </motion.div>
-          <h1 className="mt-8 font-display text-4xl sm:text-5xl text-cocoa leading-[1.05]">
-            Your order is in,
-            <span className="block italic text-forest">{name.split(" ")[0]}.</span>
-          </h1>
-          <p className="mt-5 text-cocoa/75 leading-relaxed">
-            We&apos;ve received your order and started planning the bake. Just
-            show your name at the counter when you arrive — payment is taken at
-            pick-up.
-          </p>
-
-          <div className="mt-10 mx-auto max-w-sm rounded-2xl bg-cream-100 border border-cocoa/10 p-7 text-left">
-            <Row label="Order #" value={result.orderId.slice(-8).toUpperCase()} />
-            <Row label="Pick-up" value={prettyDate(result.pickup.date)} />
-            <Row label="Time" value={slotLabel(result.pickup.slot)} />
-            <Row label="Total" value={formatPrice(result.total)} strong />
-            <div className="mt-4 pt-4 border-t border-cocoa/10 text-sm text-cocoa/60">
-              5 Alfred Street #103, Biddeford, ME 04005
-            </div>
-          </div>
-
-          <p className="mt-6 text-sm text-cocoa/55">
-            A confirmation is on its way to {email}.
-          </p>
-
-          <div className="mt-10 flex flex-wrap justify-center gap-3">
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 rounded-full bg-cocoa text-cream-50 px-7 py-3.5 text-sm uppercase tracking-[0.2em] hover:bg-rust transition-colors"
-            >
-              Back home
-            </Link>
-            <Link
-              href="/#shop"
-              className="inline-flex items-center gap-2 rounded-full border border-cocoa/25 text-cocoa px-7 py-3.5 text-sm uppercase tracking-[0.2em] hover:bg-cocoa hover:text-cream-50 transition-colors"
-            >
-              Order more
-            </Link>
-          </div>
-        </section>
-        <Footer />
-      </main>
-    );
   }
 
   // ─── Empty cart ─────────────────────────────────────────────────
@@ -218,7 +162,7 @@ export default function CheckoutPage() {
         </h1>
         <p className="mt-4 max-w-xl text-cocoa/70 leading-relaxed">
           Tell us who you are and when you&apos;ll swing by. We&apos;ll have it
-          freshly packed and ready — you pay at the counter.
+          freshly packed and ready — secure card payment on the next step.
         </p>
 
         <div className="mt-12 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-start">
@@ -332,7 +276,7 @@ export default function CheckoutPage() {
                   <Loader2 size={16} className="animate-spin" /> Placing order…
                 </>
               ) : (
-                <>Place order · {formatPrice(total)}</>
+                <>Pay online · {formatPrice(total)}</>
               )}
             </button>
           </form>
@@ -376,8 +320,8 @@ export default function CheckoutPage() {
                 </span>
               </div>
               <p className="mt-4 text-xs text-cocoa/55 leading-relaxed">
-                Payment is taken in person at pick-up. No card needed to
-                reserve.
+                Secure card payment on the next step via Clover. Your order
+                will be ready for pick-up at the chosen time.
               </p>
             </div>
           </aside>
@@ -405,30 +349,5 @@ function Field({
       </span>
       {children}
     </label>
-  );
-}
-
-function Row({
-  label,
-  value,
-  strong,
-}: {
-  label: string;
-  value: string;
-  strong?: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-between py-2 border-b border-cocoa/10 last:border-0">
-      <span className="text-xs uppercase tracking-[0.2em] text-cocoa/55">
-        {label}
-      </span>
-      <span
-        className={`tabular-nums ${
-          strong ? "font-display text-xl text-cocoa" : "text-cocoa/85"
-        }`}
-      >
-        {value}
-      </span>
-    </div>
   );
 }
