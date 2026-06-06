@@ -27,9 +27,9 @@ const isSandbox = process.env.NEXT_PUBLIC_ENV === "sandbox";
 const CLOVER_API_URL = isSandbox
   ? "https://apisandbox.dev.clover.com"
   : "https://api.clover.com";
-const SCL_URL = isSandbox
-  ? "https://scl-sandbox.dev.clover.com"
-  : "https://scl.clover.com";
+const CHECKOUT_URL = isSandbox
+  ? "https://apisandbox.dev.clover.com"
+  : "https://api.clover.com";
 
 // Franjas de recogida permitidas (última a la 1pm porque cierran a las 2pm).
 const ALLOWED_SLOTS = [
@@ -237,12 +237,14 @@ export async function POST(request: NextRequest) {
 
     console.log("[Clover Checkout] payload:", JSON.stringify(checkoutPayload));
 
-    const checkoutEndpoint = `${SCL_URL}/v1/checkouts`;
+    const checkoutEndpoint = `${CHECKOUT_URL}/invoicingcheckoutservice/v1/checkouts`;
     const checkoutRes = await fetch(checkoutEndpoint, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${ecommerceToken}`,
         "Content-Type": "application/json",
+        Accept: "application/json",
+        "X-Clover-Merchant-Id": merchantId,
       },
       body: JSON.stringify(checkoutPayload),
     });
