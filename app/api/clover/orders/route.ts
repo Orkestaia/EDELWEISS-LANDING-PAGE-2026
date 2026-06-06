@@ -227,9 +227,9 @@ export async function POST(request: NextRequest) {
       },
       shoppingCart: {
         lineItems: items.map((it) => ({
-          name: it.quantity > 1 ? `${it.name} × ${it.quantity}` : it.name,
-          unitAmount: Math.round(it.price * 100),
-          quantity: it.quantity,
+          name: it.name,
+          unitQty: it.quantity,
+          price: Math.round(it.price * 100),
         })),
       },
       redirectUrl: `${origin}/checkout/confirm?orderId=${orderId}`,
