@@ -140,83 +140,22 @@ export async function POST(request: NextRequest) {
     notes?: string;
   };
 
-  const headers = {
-    Authorization: `Bearer ${apiToken}`,
-    "Content-Type": "application/json",
-  };
-
   try {
-    // 1. Crear la orden con toda la info del cliente en la nota (la ve el POS).
-    const note = [
-      "ONLINE PICK-UP ORDER",
-      `Name: ${customer.name}`,
-      `Phone: ${customer.phone || "—"}`,
-      `Email: ${customer.email}`,
-      `Pick-up: ${pickupDate} at ${pickupSlot}`,
-      notes ? `Notes: ${notes}` : null,
-      "Payment: paid online by card",
-    ]
-      .filter(Boolean)
-      .join("\n");
-
-    const orderRes = await fetch(
-      `${CLOVER_API_URL}/v3/merchants/${merchantId}/orders`,
-      {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          state: "open",
-          title: `Online pick-up — ${customer.name}`,
-          note,
-        }),
-      }
-    );
-
-    if (!orderRes.ok) {
-      const errorText = await orderRes.text();
-      console.error("[Clover Orders] create order failed:", errorText);
-      return NextResponse.json(
-        { error: "We could not place your order. Please try again." },
-        { status: 502 }
-      );
-    }
-
-    const order = await orderRes.json();
-    const orderId = order.id as string;
-
-    // 2. Añadir cada producto como line item personalizado (sin depender
-    //    del inventario). Secuencial para respetar el rate limit de Clover.
-    for (const it of items) {
-      const lineName =
-        it.quantity > 1 ? `${it.name} × ${it.quantity}` : it.name;
-      const linePrice = Math.round(it.price * it.quantity * 100); // centavos
-
-      const liRes = await fetch(
-        `${CLOVER_API_URL}/v3/merchants/${merchantId}/orders/${orderId}/line_items`,
-        {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            name: lineName,
-            price: linePrice,
-            ...(it.itemId ? { item: { id: it.itemId } } : {}),
-          }),
-        }
-      );
-
-      if (!liRes.ok) {
-        const errorText = await liRes.text();
-        console.error("[Clover Orders] line item failed:", errorText);
-        // La orden ya existe; seguimos con el resto e informamos parcialmente.
-      }
-    }
-
+    // Una única orden: la crea automáticamente Clover Hosted Checkout al pagar.
+    // Toda la info de pickup va como "note" para que aparezca en el POS junto al pago.
     const total = items.reduce((s, it) => s + it.price * it.quantity, 0);
-
-    // 3. Crear sesión de Hosted Checkout (pago online con tarjeta).
     const origin = request.nextUrl.origin;
     const firstName = customer.name.split(" ")[0];
     const lastName = customer.name.split(" ").slice(1).join(" ") || firstName;
+
+    const pickupNote = [
+      "ONLINE PICK-UP ORDER",
+      `Pick-up: ${pickupDate} at ${pickupSlot}`,
+      `Phone: ${customer.phone || "—"}`,
+      notes ? `Notes: ${notes}` : null,
+    ]
+      .filter(Boolean)
+      .join(" | ");
 
     const checkoutPayload = {
       customer: {
@@ -230,9 +169,10 @@ export async function POST(request: NextRequest) {
           name: it.name,
           unitQty: it.quantity,
           price: Math.round(it.price * 100),
+          note: pickupNote,
         })),
       },
-      redirectUrl: `${origin}/checkout/confirm?orderId=${orderId}`,
+      redirectUrl: `${origin}/checkout/confirm`,
     };
 
     console.log("[Clover Checkout] payload:", JSON.stringify(checkoutPayload));
@@ -263,14 +203,14 @@ export async function POST(request: NextRequest) {
 
     const checkoutData = await checkoutRes.json();
     const checkoutUrl: string = checkoutData.href;
+    const checkoutSessionId: string | undefined = checkoutData.checkoutSessionId;
 
     console.log(
-      `[Clover Orders] Created ${orderId} for ${customer.name} — pickup ${pickupDate} ${pickupSlot} — checkout ${checkoutUrl}`
+      `[Clover Orders] Session ${checkoutSessionId} for ${customer.name} — pickup ${pickupDate} ${pickupSlot}`
     );
 
     return NextResponse.json({
       checkoutUrl,
-      orderId,
       pickup: { date: pickupDate, slot: pickupSlot },
       total,
     });
