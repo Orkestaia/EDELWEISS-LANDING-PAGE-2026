@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -44,7 +44,7 @@ function Row({ label, value, strong }: { label: string; value: string; strong?: 
   );
 }
 
-export default function ConfirmPage() {
+function ConfirmContent() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get("orderId");
   const [order, setOrder] = useState<OrderData | null>(null);
@@ -158,5 +158,13 @@ export default function ConfirmPage() {
       </section>
       <Footer />
     </main>
+  );
+}
+
+export default function ConfirmPage() {
+  return (
+    <Suspense fallback={null}>
+      <ConfirmContent />
+    </Suspense>
   );
 }
