@@ -28,7 +28,7 @@ const CLOVER_API_URL = isSandbox
   ? "https://apisandbox.dev.clover.com"
   : "https://api.clover.com";
 const SCL_URL = isSandbox
-  ? "https://scl.sandbox.dev.clover.com"
+  ? "https://scl-sandbox.dev.clover.com"
   : "https://scl.clover.com";
 
 // Franjas de recogida permitidas (última a la 1pm porque cierran a las 2pm).
@@ -218,33 +218,41 @@ export async function POST(request: NextRequest) {
     const firstName = customer.name.split(" ")[0];
     const lastName = customer.name.split(" ").slice(1).join(" ") || firstName;
 
-    const checkoutRes = await fetch(`${SCL_URL}/v1/checkouts`, {
+    const checkoutPayload = {
+      customer: {
+        email: customer.email,
+        firstName,
+        lastName,
+        ...(customer.phone ? { phoneNumber: customer.phone } : {}),
+      },
+      shoppingCart: {
+        lineItems: items.map((it) => ({
+          name: it.quantity > 1 ? `${it.name} × ${it.quantity}` : it.name,
+          unitAmount: Math.round(it.price * 100),
+          quantity: it.quantity,
+        })),
+      },
+      redirectUrl: `${origin}/checkout/confirm?orderId=${orderId}`,
+    };
+
+    console.log("[Clover Checkout] payload:", JSON.stringify(checkoutPayload));
+
+    const checkoutEndpoint = `${SCL_URL}/v1/checkouts`;
+    const checkoutRes = await fetch(checkoutEndpoint, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${ecommerceToken}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        customer: {
-          email: customer.email,
-          firstName,
-          lastName,
-          ...(customer.phone ? { phoneNumber: customer.phone } : {}),
-        },
-        shoppingCart: {
-          lineItems: items.map((it) => ({
-            name: it.quantity > 1 ? `${it.name} × ${it.quantity}` : it.name,
-            unitAmount: Math.round(it.price * 100),
-            quantity: it.quantity,
-          })),
-        },
-        redirectUrl: `${origin}/checkout/confirm?orderId=${orderId}`,
-      }),
+      body: JSON.stringify(checkoutPayload),
     });
 
     if (!checkoutRes.ok) {
       const errText = await checkoutRes.text();
-      console.error("[Clover Checkout] hosted checkout failed:", errText);
+      console.error("[Clover Checkout] failed — status:", checkoutRes.status);
+      console.error("[Clover Checkout] url:", checkoutEndpoint);
+      console.error("[Clover Checkout] token prefix:", ecommerceToken?.slice(0, 8));
+      console.error("[Clover Checkout] body:", errText);
       return NextResponse.json(
         { error: "Could not start the payment session. Please try again." },
         { status: 502 }
