@@ -270,6 +270,60 @@ export async function POST(request: NextRequest) {
       `[Clover Orders] Session ${checkoutSessionId} for ${customer.name} — pickup ${pickupDate} ${pickupSlot}`
     );
 
+    // DECREMENT DE STOCK (mejor esfuerzo, sin webhook).
+    // Decrementamos ya en este punto, antes de que el cliente complete el pago,
+    // porque ya hemos validado que hay stock y la conversión en Hosted Checkout
+    // suele ser muy alta. Si el cliente abandona, Edelweiss puede corregir.
+    // TODO: sustituir por webhook de Clover para precisión 100%.
+    for (const it of itemsWithIds) {
+      if (!it.cloverItemId) continue;
+      try {
+        const stockRes = await fetch(
+          `${CLOVER_API_URL}/v3/merchants/${merchantId}/item_stocks/${it.cloverItemId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${apiToken}`,
+              "Content-Type": "application/json",
+            },
+            cache: "no-store",
+          }
+        );
+        if (!stockRes.ok) continue;
+        const stockData = await stockRes.json();
+        const current =
+          typeof stockData.stockCount === "number"
+            ? stockData.stockCount
+            : typeof stockData.quantity === "number"
+            ? Math.floor(stockData.quantity)
+            : 0;
+        const newCount = Math.max(0, current - it.quantity);
+        const updateRes = await fetch(
+          `${CLOVER_API_URL}/v3/merchants/${merchantId}/item_stocks/${it.cloverItemId}`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${apiToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ stockCount: newCount }),
+          }
+        );
+        if (!updateRes.ok) {
+          const errText = await updateRes.text();
+          console.error(
+            `[Stock] decrement failed for ${it.name} (${it.cloverItemId}):`,
+            errText
+          );
+        } else {
+          console.log(
+            `[Stock] ${it.name}: ${current} → ${newCount} (-${it.quantity})`
+          );
+        }
+      } catch (err) {
+        console.error(`[Stock] decrement error for ${it.name}:`, err);
+      }
+    }
+
     return NextResponse.json({
       checkoutUrl,
       pickup: { date: pickupDate, slot: pickupSlot },
