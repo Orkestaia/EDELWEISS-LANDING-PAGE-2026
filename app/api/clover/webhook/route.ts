@@ -3,17 +3,18 @@
  *
  * POST /api/clover/webhook
  *
- * Clover llama a este endpoint cada vez que un pago de Hosted Checkout
- * cambia de estado (creado, completado, fallido, reembolsado).
+ * Clover calls this endpoint when a Hosted Checkout payment changes
+ * status (APPROVED, DECLINED, etc.).
  *
- * Usamos el evento de pago completado para:
- *   1. Loguear el pago (auditoria)
- *   2. Decrementar el stock de los items vendidos (precision 100%)
- *   3. Vincular los line items al inventario para disparar printer labels
+ * On APPROVED we:
+ *   1. Log the payment (audit trail)
+ *   2. Find the order via the payment ID
+ *   3. Link line items to inventory items (triggers printer labels)
  *
- * SEGURIDAD: cada webhook viene firmado con HMAC-SHA256 usando el
- * Signing Secret configurado en el dashboard de Clover. Verificamos
- * la firma antes de procesar; si no coincide, logueamos debug info.
+ * Stock decrement is handled in orders/route.ts (decrement-immediate).
+ *
+ * SIGNATURE: Clover signs webhooks with format "t=TIMESTAMP,v1=HMAC".
+ * The HMAC is SHA-256 of "TIMESTAMP.BODY" using the Signing Secret.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -38,91 +39,63 @@ function getCredentials() {
   return { merchantId, apiToken, webhookSecret };
 }
 
-/** Verifica la firma HMAC-SHA256 del webhook. */
+/**
+ * Verifies Clover webhook signature.
+ * Header format: "t=1780927847,v1=a7be217a..."
+ * HMAC is computed over "TIMESTAMP.RAW_BODY" using the signing secret.
+ */
 function verifySignature(
   rawBody: string,
-  signature: string | null,
+  signatureHeader: string | null,
   secret: string
 ): boolean {
-  if (!signature) return false;
+  if (!signatureHeader) return false;
+
+  // Parse t=xxx,v1=yyy
+  const parts: Record<string, string> = {};
+  for (const part of signatureHeader.split(",")) {
+    const [key, ...rest] = part.split("=");
+    if (key && rest.length) parts[key.trim()] = rest.join("=").trim();
+  }
+
+  const timestamp = parts["t"];
+  const receivedSig = parts["v1"];
+  if (!timestamp || !receivedSig) {
+    console.error("[Webhook] could not parse signature header:", signatureHeader.slice(0, 60));
+    return false;
+  }
+
+  // Compute HMAC over "timestamp.body"
+  const payload = `${timestamp}.${rawBody}`;
   const expected = crypto
     .createHmac("sha256", secret)
-    .update(rawBody, "utf8")
+    .update(payload, "utf8")
     .digest("hex");
-  // Constant-time comparison (anti timing attacks)
+
   try {
     return crypto.timingSafeEqual(
       Buffer.from(expected, "hex"),
-      Buffer.from(signature, "hex")
+      Buffer.from(receivedSig, "hex")
     );
   } catch {
-    return false;
+    // Also try without the hcp_ prefix
+    const secretClean = secret.startsWith("hcp_") ? secret.slice(4) : secret;
+    const expected2 = crypto
+      .createHmac("sha256", secretClean)
+      .update(payload, "utf8")
+      .digest("hex");
+    try {
+      return crypto.timingSafeEqual(
+        Buffer.from(expected2, "hex"),
+        Buffer.from(receivedSig, "hex")
+      );
+    } catch {
+      return false;
+    }
   }
 }
 
-/** Decrementa el stock de un item de Clover por una cantidad dada. */
-async function decrementStock(
-  apiToken: string,
-  merchantId: string,
-  itemId: string,
-  qty: number,
-  itemName: string
-) {
-  try {
-    const stockRes = await fetch(
-      `${CLOVER_API_URL}/v3/merchants/${merchantId}/item_stocks/${itemId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${apiToken}`,
-          "Content-Type": "application/json",
-        },
-        cache: "no-store",
-      }
-    );
-    if (!stockRes.ok) {
-      console.error(
-        `[Webhook] read stock failed for ${itemName} (${itemId})`
-      );
-      return;
-    }
-    const stockData = await stockRes.json();
-    const current =
-      typeof stockData.stockCount === "number"
-        ? stockData.stockCount
-        : typeof stockData.quantity === "number"
-        ? Math.floor(stockData.quantity)
-        : 0;
-    const newCount = Math.max(0, current - qty);
-    const updateRes = await fetch(
-      `${CLOVER_API_URL}/v3/merchants/${merchantId}/item_stocks/${itemId}`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ stockCount: newCount, quantity: newCount }),
-      }
-    );
-    if (!updateRes.ok) {
-      const errText = await updateRes.text();
-      console.error(
-        `[Webhook] decrement failed for ${itemName} (${itemId}):`,
-        updateRes.status,
-        errText
-      );
-    } else {
-      console.log(
-        `[Webhook] ${itemName}: ${current} -> ${newCount} (-${qty})`
-      );
-    }
-  } catch (err) {
-    console.error(`[Webhook] decrement error for ${itemName}:`, err);
-  }
-}
-
-/** Vincula un line item de la orden a su item de inventario en Clover.
- *  Esto permite que las printer labels de Clover se disparen. */
+/** Links a line item to its inventory item in Clover (enables printer labels). */
 async function linkLineItemToInventory(
   apiToken: string,
   merchantId: string,
@@ -145,7 +118,7 @@ async function linkLineItemToInventory(
     );
     if (res.ok) {
       console.log(
-        `[Webhook] linked "${itemName}" line item ${lineItemId} to inventory item ${inventoryItemId}`
+        `[Webhook] linked "${itemName}" -> inventory ${inventoryItemId}`
       );
     } else {
       const errText = await res.text();
@@ -168,38 +141,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Not configured" }, { status: 503 });
   }
 
-  // Leer body crudo para verificar la firma.
   const rawBody = await request.text();
 
-  // Debug: log ALL headers to find the correct signature header
-  const allHeaders: Record<string, string> = {};
-  request.headers.forEach((value, key) => {
-    allHeaders[key] = key.toLowerCase().includes("secret") ? "***" : value;
-  });
-  console.log("[Webhook] headers:", JSON.stringify(allHeaders));
+  // Get signature from the correct header
+  const signatureHeader = request.headers.get("clover-signature");
 
-  const signature =
-    request.headers.get("x-clover-signature") ||
-    request.headers.get("x-clover-webhook-signature") ||
-    request.headers.get("clover-signature") ||
-    request.headers.get("signature");
-
-  const signatureValid = verifySignature(rawBody, signature, webhookSecret);
+  const signatureValid = verifySignature(rawBody, signatureHeader, webhookSecret);
 
   if (!signatureValid) {
-    // Debug: log expected vs received so we can fix the format
-    const expected = crypto
-      .createHmac("sha256", webhookSecret)
-      .update(rawBody, "utf8")
-      .digest("hex");
-    console.warn("[Webhook] signature MISMATCH");
-    console.warn("[Webhook] received sig:", signature?.slice(0, 20) + "...");
-    console.warn("[Webhook] expected sig:", expected.slice(0, 20) + "...");
-    console.warn("[Webhook] secret prefix:", webhookSecret.slice(0, 8) + "...");
-    console.warn(
-      "[Webhook] PROCESSING ANYWAY (debug mode) — fix signature before go-live"
-    );
-    // In production, uncomment this to enforce signature:
+    console.warn("[Webhook] signature MISMATCH — processing anyway (debug mode)");
+    // TODO: enforce signature before go-live:
     // return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   } else {
     console.log("[Webhook] signature verified OK");
@@ -212,43 +163,76 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  console.log(
-    "[Webhook] received:",
-    JSON.stringify(payload).slice(0, 500)
-  );
+  console.log("[Webhook] event:", JSON.stringify(payload));
 
-  // Eventos relevantes: pago completado.
-  const eventType =
-    payload.type || payload.eventType || payload.event || "unknown";
-  const orderId =
-    payload.orderId || payload.order?.id || payload.objectId || null;
-  const status =
-    payload.status || payload.checkoutStatus || payload.state || null;
+  const eventType = payload.type || "unknown";
+  const status = payload.status || null;
+  const paymentId = payload.id || null;
+  const checkoutSessionId = payload.checkoutSessionId || null;
 
   console.log(
-    `[Webhook] event=${eventType} status=${status} orderId=${orderId}`
+    `[Webhook] type=${eventType} status=${status} paymentId=${paymentId} sessionId=${checkoutSessionId}`
   );
 
-  // Si el pago no se completo, no procesamos.
-  const isPaid =
+  // Clover Hosted Checkout sends status "APPROVED" for successful payments
+  const isApproved =
+    status === "APPROVED" ||
+    status === "approved" ||
     status === "PAID" ||
     status === "paid" ||
     status === "COMPLETED" ||
-    status === "completed" ||
-    (eventType.toLowerCase().includes("payment") &&
-      eventType.toLowerCase().includes("success"));
+    status === "completed";
 
-  if (!isPaid) {
-    console.log(`[Webhook] non-paid event, ignoring`);
+  if (!isApproved) {
+    console.log(`[Webhook] status "${status}" is not approved, ignoring`);
     return NextResponse.json({ ok: true, ignored: true });
   }
 
-  if (!orderId || !merchantId || !apiToken) {
-    console.error("[Webhook] missing orderId or credentials");
-    return NextResponse.json({ ok: true, error: "missing data" });
+  if (!merchantId || !apiToken) {
+    console.error("[Webhook] missing credentials");
+    return NextResponse.json({ ok: true, error: "missing credentials" });
   }
 
-  // Fetch the order to get its line items.
+  // Find the order via the payment ID
+  // Clover Hosted Checkout doesn't send orderId directly — we look it up
+  let orderId: string | null = null;
+
+  if (paymentId) {
+    try {
+      const paymentRes = await fetch(
+        `${CLOVER_API_URL}/v3/merchants/${merchantId}/payments/${paymentId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${apiToken}`,
+            "Content-Type": "application/json",
+          },
+          cache: "no-store",
+        }
+      );
+      if (paymentRes.ok) {
+        const paymentData = await paymentRes.json();
+        orderId = paymentData.order?.id || null;
+        console.log(
+          `[Webhook] payment ${paymentId} -> order ${orderId}`
+        );
+      } else {
+        console.error(
+          "[Webhook] fetch payment failed:",
+          paymentRes.status,
+          await paymentRes.text()
+        );
+      }
+    } catch (err) {
+      console.error("[Webhook] fetch payment error:", err);
+    }
+  }
+
+  if (!orderId) {
+    console.error("[Webhook] could not find orderId from payment");
+    return NextResponse.json({ ok: true, error: "no orderId found" });
+  }
+
+  // Fetch the order with line items
   try {
     const orderRes = await fetch(
       `${CLOVER_API_URL}/v3/merchants/${merchantId}/orders/${orderId}?expand=lineItems`,
@@ -272,30 +256,24 @@ export async function POST(request: NextRequest) {
     const lineItems: any[] = order.lineItems?.elements || [];
 
     console.log(
-      `[Webhook] order ${orderId} has ${lineItems.length} line items`
+      `[Webhook] order ${orderId} has ${lineItems.length} line item(s)`
     );
 
-    // Para cada line item:
-    // 1. Encontrar el producto por nombre
-    // 2. Decrementar stock (si no se hizo ya via decrement-immediate)
-    // 3. Vincular al item de inventario (para printer labels)
+    // For each line item: find matching product and link to inventory
+    let linked = 0;
     for (const li of lineItems) {
       const product = products.find((p) => p.name === li.name);
       if (!product) {
-        console.log(
-          `[Webhook] no product match for "${li.name}", skipping`
-        );
+        console.log(`[Webhook] no product match for "${li.name}", skipping`);
         continue;
       }
       const cloverItemId = effectiveCloverItemId(product);
       if (!cloverItemId) {
-        console.log(
-          `[Webhook] no cloverItemId for ${product.slug}, skipping`
-        );
+        console.log(`[Webhook] no cloverItemId for ${product.slug}, skipping`);
         continue;
       }
 
-      // Vincular line item al inventario (para printer labels)
+      // Link line item to inventory item (triggers printer labels)
       if (li.id) {
         await linkLineItemToInventory(
           apiToken,
@@ -305,19 +283,15 @@ export async function POST(request: NextRequest) {
           cloverItemId,
           li.name
         );
+        linked++;
       }
 
-      // NOTA: el decrement de stock ya se hace en orders/route.ts (decrement-immediate).
-      // NO decrementamos aqui tambien para evitar double-decrement.
-      // Si en el futuro cambiamos a webhook-only, descomentar esto:
-      // const qty = typeof li.unitQty === "number" && li.unitQty > 0 ? li.unitQty : 1;
-      // await decrementStock(apiToken, merchantId, cloverItemId, qty, li.name);
+      // NOTE: stock decrement is done in orders/route.ts (decrement-immediate).
+      // Do NOT decrement here to avoid double-decrement.
     }
 
-    return NextResponse.json({
-      ok: true,
-      linked: lineItems.length,
-    });
+    console.log(`[Webhook] done — linked ${linked}/${lineItems.length} items`);
+    return NextResponse.json({ ok: true, linked });
   } catch (err) {
     console.error("[Webhook] unexpected error:", err);
     return NextResponse.json({ ok: true, error: "internal" });
