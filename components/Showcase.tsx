@@ -13,9 +13,11 @@ import {
   type ProductCategory,
 } from "@/lib/products";
 import { useCart, parsePrice } from "@/lib/cart";
+import { useInventory, stockState } from "@/lib/inventory";
 import { Reveal } from "./Reveal";
 
 export function Showcase() {
+  const { stocks } = useInventory();
   return (
     <section id="shop" className="relative bg-cream-50 paper">
       <div className="mx-auto max-w-7xl px-5 sm:px-8 py-24 sm:py-32">
@@ -24,7 +26,7 @@ export function Showcase() {
 
         <div className="mt-20 space-y-28 sm:space-y-32">
           {categories.map((cat) => (
-            <CategorySection key={cat} category={cat} />
+            <CategorySection key={cat} category={cat} stocks={stocks} />
           ))}
         </div>
 
@@ -95,7 +97,13 @@ function CategoryNav() {
   );
 }
 
-function CategorySection({ category }: { category: ProductCategory }) {
+function CategorySection({
+  category,
+  stocks,
+}: {
+  category: ProductCategory;
+  stocks: Record<string, number | null>;
+}) {
   const reduce = useReducedMotion();
   const items = products.filter((p) => p.category === category);
 
@@ -119,7 +127,13 @@ function CategorySection({ category }: { category: ProductCategory }) {
 
       <ul className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
         {items.map((p, i) => (
-          <ProductCard key={p.slug} product={p} index={i} reduce={!!reduce} />
+          <ProductCard
+            key={p.slug}
+            product={p}
+            index={i}
+            reduce={!!reduce}
+            stock={stocks[p.slug]}
+          />
         ))}
       </ul>
     </div>
@@ -130,17 +144,22 @@ function ProductCard({
   product: p,
   index,
   reduce,
+  stock,
 }: {
   product: Product;
   index: number;
   reduce: boolean;
+  stock: number | null | undefined;
 }) {
   const { addItem } = useCart();
   const [added, setAdded] = useState(false);
   const priceValue = parsePrice(p.price);
+  const state = stockState(stock);
+  const soldOut = state === "sold-out";
+  const isLow = state === "low" && typeof stock === "number";
 
   function handleAdd() {
-    if (priceValue == null) return;
+    if (priceValue == null || soldOut) return;
     addItem({ slug: p.slug, name: p.name, price: priceValue, image: p.image });
     setAdded(true);
     window.setTimeout(() => setAdded(false), 1400);
@@ -158,18 +177,34 @@ function ProductCard({
       }}
       className="group relative"
     >
-      <article className="flex h-full flex-col rounded-[1.6rem] overflow-hidden bg-cream-100 shadow-soft hover:shadow-card transition-shadow border border-cocoa/5">
+      <article
+        className={`flex h-full flex-col rounded-[1.6rem] overflow-hidden bg-cream-100 shadow-soft hover:shadow-card transition-shadow border border-cocoa/5 ${
+          soldOut ? "opacity-70" : ""
+        }`}
+      >
         <div className="relative aspect-[5/4] w-full overflow-hidden bg-cream-50">
           <Image
             src={p.image}
             alt={p.name}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            className="object-contain p-5 transition-transform duration-[1200ms] ease-out group-hover:scale-[1.04]"
+            className={`object-contain p-5 transition-transform duration-[1200ms] ease-out group-hover:scale-[1.04] ${
+              soldOut ? "grayscale" : ""
+            }`}
           />
-          {p.tag && (
+          {p.tag && !soldOut && (
             <span className="absolute top-4 left-4 inline-flex items-center gap-1 rounded-full bg-mustard/95 px-3 py-1 text-[0.65rem] uppercase tracking-[0.22em] text-cocoa">
               {p.tag}
+            </span>
+          )}
+          {soldOut && (
+            <span className="absolute top-4 left-4 inline-flex items-center gap-1 rounded-full bg-cocoa/90 px-3 py-1 text-[0.65rem] uppercase tracking-[0.22em] text-cream-50">
+              Sold out today
+            </span>
+          )}
+          {isLow && (
+            <span className="absolute top-4 left-4 inline-flex items-center gap-1 rounded-full bg-rust/95 px-3 py-1 text-[0.65rem] uppercase tracking-[0.22em] text-cream-50">
+              Only {stock} left
             </span>
           )}
         </div>
@@ -201,14 +236,23 @@ function ProductCard({
             {priceValue != null && (
               <button
                 onClick={handleAdd}
-                aria-label={`Add ${p.name} to cart`}
-                className={`inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-xs uppercase tracking-[0.16em] transition-colors ${
-                  added
+                disabled={soldOut}
+                aria-label={
+                  soldOut
+                    ? `${p.name} sold out today`
+                    : `Add ${p.name} to cart`
+                }
+                className={`inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-xs uppercase tracking-[0.16em] transition-colors disabled:cursor-not-allowed ${
+                  soldOut
+                    ? "bg-cocoa/20 text-cocoa/50"
+                    : added
                     ? "bg-forest text-cream-50"
                     : "bg-cocoa text-cream-50 hover:bg-rust"
                 }`}
               >
-                {added ? (
+                {soldOut ? (
+                  "Sold out"
+                ) : added ? (
                   <>
                     <Check size={15} /> Added
                   </>

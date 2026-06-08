@@ -22,6 +22,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { products, effectiveCloverItemId } from "@/lib/products";
 
 const isSandbox = process.env.NEXT_PUBLIC_ENV === "sandbox";
 const CLOVER_API_URL = isSandbox
@@ -58,6 +59,7 @@ function getCredentials() {
 }
 
 interface OrderItem {
+  slug?: string;
   name: string;
   price: number;
   quantity: number;
@@ -140,6 +142,65 @@ export async function POST(request: NextRequest) {
     notes?: string;
   };
 
+  // Resolver el Clover item ID para cada producto (si está mapeado).
+  // Usamos el slug que envía el frontend para buscar en `lib/products`.
+  const itemsWithIds = items.map((it) => {
+    const product = it.slug
+      ? products.find((p) => p.slug === it.slug)
+      : undefined;
+    const cloverItemId = product ? effectiveCloverItemId(product) : undefined;
+    return { ...it, cloverItemId };
+  });
+
+  // VALIDACIÓN DE STOCK: para cada producto con item ID, consultamos el stock
+  // actual en Clover y rechazamos si no hay suficiente. Esto evita sobreventa.
+  try {
+    const stockChecks = await Promise.all(
+      itemsWithIds
+        .filter((it) => it.cloverItemId)
+        .map(async (it) => {
+          const r = await fetch(
+            `${CLOVER_API_URL}/v3/merchants/${merchantId}/item_stocks/${it.cloverItemId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${apiToken}`,
+                "Content-Type": "application/json",
+              },
+              cache: "no-store",
+            }
+          );
+          if (!r.ok) return { name: it.name, available: null as number | null };
+          const data = await r.json();
+          const available =
+            typeof data.stockCount === "number"
+              ? data.stockCount
+              : typeof data.quantity === "number"
+              ? Math.floor(data.quantity)
+              : null;
+          return { name: it.name, requested: it.quantity, available };
+        })
+    );
+
+    const oversold = stockChecks.find(
+      (s) =>
+        typeof s.available === "number" &&
+        typeof (s as any).requested === "number" &&
+        s.available < (s as any).requested
+    );
+    if (oversold) {
+      return NextResponse.json(
+        {
+          error: `Sorry, ${oversold.name} only has ${oversold.available} left for today. Please adjust your order.`,
+        },
+        { status: 409 }
+      );
+    }
+  } catch (err) {
+    console.error("[Clover Orders] stock check failed:", err);
+    // No bloqueamos el pedido si la validación falla (red, timeout, etc).
+    // Clover lo bloqueará igualmente en producción si Allow negative = OFF.
+  }
+
   try {
     // Una única orden: la crea automáticamente Clover Hosted Checkout al pagar.
     // Toda la info de pickup va como "note" para que aparezca en el POS junto al pago.
@@ -165,11 +226,14 @@ export async function POST(request: NextRequest) {
         ...(customer.phone ? { phoneNumber: customer.phone } : {}),
       },
       shoppingCart: {
-        lineItems: items.map((it) => ({
+        lineItems: itemsWithIds.map((it) => ({
           name: it.name,
           unitQty: it.quantity,
           price: Math.round(it.price * 100),
           note: pickupNote,
+          // Enlaza el line item al item real de Clover para que se decremente
+          // el stock automáticamente al pagar.
+          ...(it.cloverItemId ? { itemRefUuid: it.cloverItemId } : {}),
         })),
       },
       redirectUrl: `${origin}/checkout/confirm`,

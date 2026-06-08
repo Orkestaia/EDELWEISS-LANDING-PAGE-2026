@@ -2,112 +2,128 @@
  * CLOVER INVENTORY API
  *
  * GET /api/clover/inventory
- * Devuelve todos los productos activos del menú de Edelweiss.
+ * Devuelve el stock actual de cada producto del catálogo de la web.
  *
- * Respuesta cacheada 5 minutos para no saturar la API de Clover.
- * El caché se invalida cuando Edelweiss cambia productos en su POS.
+ * Respuesta:
+ * {
+ *   stocks: { [slug]: number | null },
+ *   updatedAt: string
+ * }
+ * - number = stockCount actual en Clover (entero, lo que les queda en vitrina virtual)
+ * - null   = producto sin tracking de inventario (Edelweiss no le ha puesto stock,
+ *            o no está mapeado a un item de Clover). Se trata como "always available".
  *
- * SEGURIDAD: El API Token NUNCA sale de este servidor.
- * Ver SECURITY.md para más detalles.
+ * Cacheado 30 segundos en CDN para no saturar Clover. Si Edelweiss vende algo en
+ * el mostrador, la web tardará máximo 30s en reflejarlo (aceptable).
+ *
+ * SEGURIDAD: el API Token NUNCA sale de este servidor.
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from "next/server";
+import { products, effectiveCloverItemId } from "@/lib/products";
 
-const isSandbox = process.env.NEXT_PUBLIC_ENV === 'sandbox'
+const isSandbox = process.env.NEXT_PUBLIC_ENV === "sandbox";
 const CLOVER_API_URL = isSandbox
-  ? 'https://apisandbox.dev.clover.com'
-  : 'https://api.clover.com'
+  ? "https://apisandbox.dev.clover.com"
+  : "https://api.clover.com";
 
-export async function GET(request: NextRequest) {
+function getCredentials() {
   const merchantId = isSandbox
     ? process.env.CLOVER_SANDBOX_MERCHANT_ID
-    : process.env.CLOVER_MERCHANT_ID
-
+    : process.env.CLOVER_MERCHANT_ID;
   const apiToken = isSandbox
     ? process.env.CLOVER_SANDBOX_API_TOKEN
-    : process.env.CLOVER_API_TOKEN
+    : process.env.CLOVER_API_TOKEN;
+  return { merchantId, apiToken };
+}
 
+export async function GET() {
+  const { merchantId, apiToken } = getCredentials();
   if (!merchantId || !apiToken) {
     return NextResponse.json(
-      { error: 'Clover not configured' },
+      { error: "Inventory not configured" },
       { status: 503 }
-    )
+    );
+  }
+
+  // Construimos la lista de Clover item IDs que nos interesan (solo los del menú).
+  const slugById = new Map<string, string>();
+  for (const p of products) {
+    const id = effectiveCloverItemId(p);
+    if (id) slugById.set(id, p.slug);
+  }
+
+  if (slugById.size === 0) {
+    return NextResponse.json({
+      stocks: {},
+      updatedAt: new Date().toISOString(),
+      note: "No products mapped to Clover items in this environment.",
+    });
   }
 
   try {
-    // Obtener productos
-    const [itemsRes, categoriesRes] = await Promise.all([
-      fetch(
-        `${CLOVER_API_URL}/v3/merchants/${merchantId}/items?expand=categories`,
-        {
-          headers: {
-            Authorization: `Bearer ${apiToken}`,
-            'Content-Type': 'application/json',
-          },
-          // Caché de 5 minutos (Next.js revalidation)
-          next: { revalidate: 300 },
-        }
-      ),
-      fetch(
-        `${CLOVER_API_URL}/v3/merchants/${merchantId}/categories`,
-        {
-          headers: {
-            Authorization: `Bearer ${apiToken}`,
-            'Content-Type': 'application/json',
-          },
-          next: { revalidate: 300 },
-        }
-      ),
-    ])
+    // Endpoint bulk de stocks. Devuelve TODOS los stocks del merchant; filtramos.
+    const stocksRes = await fetch(
+      `${CLOVER_API_URL}/v3/merchants/${merchantId}/item_stocks?limit=1000`,
+      {
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+          "Content-Type": "application/json",
+        },
+        // Cache de 30s para no saturar Clover en visitas concurrentes.
+        next: { revalidate: 30 },
+      }
+    );
 
-    if (!itemsRes.ok) {
-      const errorText = await itemsRes.text()
-      console.error('[Clover Inventory] Error fetching items:', errorText)
+    if (!stocksRes.ok) {
+      const errText = await stocksRes.text();
+      console.error("[Clover Inventory] item_stocks failed:", errText);
       return NextResponse.json(
-        { error: 'Failed to fetch inventory' },
+        { error: "Failed to fetch stock counts" },
         { status: 502 }
-      )
+      );
     }
 
-    const itemsData = await itemsRes.json()
-    const categoriesData = categoriesRes.ok ? await categoriesRes.json() : { elements: [] }
+    const stocksData = await stocksRes.json();
 
-    // Transformar para la web (no exponer datos internos de Clover)
-    const items = (itemsData.elements || []).map((item: any) => ({
-      id: item.id,
-      name: item.name,
-      price: item.price / 100, // Clover guarda precios en centavos
-      description: item.alternateName || '',
-      category: item.categories?.elements?.[0]?.name || 'Uncategorized',
-      available: item.available !== false,
-      imageUrl: item.imageUrl || null,
-    }))
+    // Mapear: slug → stockCount
+    const stocks: Record<string, number | null> = {};
+    for (const p of products) {
+      stocks[p.slug] = null; // por defecto, sin tracking
+    }
 
-    const categories = (categoriesData.elements || []).map((cat: any) => ({
-      id: cat.id,
-      name: cat.name,
-      sortOrder: cat.sortOrder || 0,
-    }))
+    for (const stock of stocksData.elements || []) {
+      // Cada elemento es { item: { id }, quantity, stockCount }
+      const itemId = stock.item?.id;
+      if (!itemId) continue;
+      const slug = slugById.get(itemId);
+      if (!slug) continue;
+      // stockCount puede venir como número o no venir. Si no existe → null.
+      const count =
+        typeof stock.stockCount === "number"
+          ? stock.stockCount
+          : typeof stock.quantity === "number"
+          ? Math.floor(stock.quantity)
+          : null;
+      stocks[slug] = count;
+    }
 
     return NextResponse.json(
       {
-        items,
-        categories,
-        total: items.length,
+        stocks,
         updatedAt: new Date().toISOString(),
       },
       {
         headers: {
-          'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60',
+          "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
         },
       }
-    )
-
+    );
   } catch (err) {
-    console.error('[Clover Inventory] Error inesperado:', err)
+    console.error("[Clover Inventory] unexpected error:", err);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: "Internal server error" },
       { status: 500 }
-    )
+    );
   }
 }

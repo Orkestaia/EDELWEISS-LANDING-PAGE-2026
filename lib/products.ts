@@ -13,7 +13,22 @@ export type Product = {
   image: string;
   price?: string;
   tag?: string;
+  /** Clover item ID in the REAL Edelweiss merchant (production).
+   *  Optional because a product can be listed without inventory tracking. */
+  cloverItemId?: string;
+  /** Optional Clover item ID in the Test Merchant sandbox.
+   *  Only set on items we've replicated in the sandbox for testing. */
+  cloverItemIdSandbox?: string;
 };
+
+/** Returns the right Clover item ID for the active environment.
+ *  In sandbox, products without a sandbox replica return undefined → treated as unlimited. */
+export function effectiveCloverItemId(product: Product): string | undefined {
+  if (process.env.NEXT_PUBLIC_ENV === "sandbox") {
+    return product.cloverItemIdSandbox;
+  }
+  return product.cloverItemId;
+}
 
 export const products: Product[] = [
   // --- Breakfast ---
@@ -25,6 +40,7 @@ export const products: Product[] = [
       "72 hours of cold fermentation and layer upon layer of French butter. Honest, golden, Swiss.",
     image: "/images/products/butter-croissant.jpg",
     price: "$4.00",
+    cloverItemId: "8NX71FCSKNWA0",
   },
   {
     slug: "pain-au-chocolat",
@@ -34,6 +50,8 @@ export const products: Product[] = [
       "Our flagship laminated dough wrapped around two batons of single-origin dark chocolate.",
     image: "/images/products/chocolate-croissant.jpg",
     price: "$4.50",
+    cloverItemId: "SDWE3YVGBMQJG",
+    cloverItemIdSandbox: "RHXB6T7QPF6N6",
   },
   {
     slug: "almond-croissant",
@@ -43,6 +61,7 @@ export const products: Product[] = [
       "Twice-baked with almond cream, toasted slivers and a soft kiss of powdered sugar.",
     image: "/images/products/almond-croissant.jpg",
     price: "$6.00",
+    cloverItemId: "BEA6FRX0PV4EM",
   },
   {
     slug: "ham-cheese-croissant",
@@ -52,6 +71,7 @@ export const products: Product[] = [
       "Italian Bresaola and aged Appenzeller cheese tucked into a flaky butter croissant.",
     image: "/images/products/ham-cheese-croissant.jpg",
     price: "$6.50",
+    cloverItemId: "0WHMSSG9HM984",
   },
   {
     slug: "vanilla-creme-croissant",
@@ -62,6 +82,7 @@ export const products: Product[] = [
     image: "/images/products/vanilla-creme-croissant.jpg",
     price: "$4.50",
     tag: "Weekend",
+    cloverItemId: "DWZGKSRKFSYZY",
   },
   {
     slug: "brioche-hazelnut",
@@ -72,6 +93,7 @@ export const products: Product[] = [
     image: "/images/products/brioche.jpg",
     price: "$5.00",
     tag: "Weekend",
+    cloverItemId: "X088WXZSZ4A7M",
   },
   {
     slug: "berliner",
@@ -81,6 +103,8 @@ export const products: Product[] = [
       "Old-world fried yeast doughnut filled with raspberry jam and vanilla-scented sugar.",
     image: "/images/products/berliner.jpg",
     price: "$4.00",
+    cloverItemId: "DB0KKYYDSFKYP",
+    cloverItemIdSandbox: "3T8YHQ79HP91R",
   },
   {
     slug: "blueberry-scone",
@@ -90,6 +114,7 @@ export const products: Product[] = [
       "Buttery scone studded with Maine blueberries and brightened with candied lemon.",
     image: "/images/products/blueberry-scone.jpg",
     price: "$4.00",
+    cloverItemId: "3077398B7HQF4",
   },
   {
     slug: "nuss-schnecken",
@@ -99,6 +124,8 @@ export const products: Product[] = [
       "Moist and tender nut spiral pastry drizzled with a delicate vanilla glaze.",
     image: "/images/products/nuss-schnecken.jpg",
     price: "$5.50",
+    cloverItemId: "BN3VYDHA5DGWJ",
+    cloverItemIdSandbox: "YQRBB7N2T84NM",
   },
   {
     slug: "chocolate-weggli",
@@ -108,6 +135,7 @@ export const products: Product[] = [
       "A classic from Basel — a soft white roll generously studded with chocolate pieces.",
     image: "/images/products/chocolate-weggli.jpg",
     price: "$3.00",
+    cloverItemId: "KHQDRQRECKWHW",
   },
   {
     slug: "seasonal-quiche",
@@ -117,6 +145,7 @@ export const products: Product[] = [
       "Buttery shortcrust filled with seasonal vegetables and aged Appenzeller cheese.",
     image: "/images/products/quiche.jpg",
     price: "$6.00",
+    cloverItemId: "G96MDNXVCW1H6",
   },
   {
     slug: "fruit-danish",
@@ -127,6 +156,7 @@ export const products: Product[] = [
     image: "/images/products/fruit-danish.jpg",
     price: "$6.00",
     tag: "Weekend",
+    cloverItemId: "YBZCXXGBF39RJ",
   },
 
   // --- Breads ---
@@ -138,6 +168,7 @@ export const products: Product[] = [
       "The Sunday loaf of the Swiss table — enriched with milk and butter, brushed with egg yolk, braided by hand.",
     image: "/images/products/zopf-new.jpg",
     price: "$7.00",
+    cloverItemId: "N5TFWTQZHNWSA",
   },
   {
     slug: "maine-grains-wheat",
@@ -147,6 +178,8 @@ export const products: Product[] = [
       "Naturally leavened whole wheat with a toasted sesame crust. Dense, fragrant, alive.",
     image: "/images/products/rye-sesame.jpg",
     price: "$6.50",
+    // TODO: confirmar con Valentina qué item de Clover usar (no hay "Whole Wheat" en su inventario real).
+    // Sin cloverItemId el producto se vende como antes (line item custom, sin tracking de stock).
   },
   {
     slug: "daily-focaccia",
@@ -156,6 +189,7 @@ export const products: Product[] = [
       "Olive-oil rich focaccia, dimpled, finished with rosemary and flaky sea salt.",
     image: "/images/products/focaccia.jpg",
     price: "$5.00",
+    cloverItemId: "WNGNQAP6MMC7M",
   },
 
   // --- Pastries ---
@@ -168,6 +202,7 @@ export const products: Product[] = [
     image: "/images/products/financier.jpg",
     price: "$9.00",
     tag: "GF",
+    cloverItemId: "GTCV3E2PY6HQ6",
   },
   {
     slug: "streusel-kuchen",
@@ -177,6 +212,7 @@ export const products: Product[] = [
       "Pound cake topped with salty, sweet and crunchy pieces of vanilla streusel.",
     image: "/images/products/streusel-kuchen.jpg",
     price: "$7.00",
+    cloverItemId: "PTREMQKEAS0JW",
   },
   {
     slug: "baileys-bread-pudding",
@@ -186,6 +222,7 @@ export const products: Product[] = [
       "Thick slices of buttery brioche-style bread baked slowly in a Baileys custard.",
     image: "/images/products/baileys-bread-pudding.jpg",
     price: "$7.50",
+    cloverItemId: "Z4EJQZW51BGW2",
   },
   {
     slug: "chocolate-tart",
@@ -195,6 +232,7 @@ export const products: Product[] = [
       "Dark chocolate seasonal ganache with fluid gel and cocoa nibs.",
     image: "/images/products/chocolate-tart.jpg",
     price: "$7.50",
+    cloverItemId: "Z68MW2HBV8Q1G",
   },
   {
     slug: "creme-puff",
@@ -204,6 +242,7 @@ export const products: Product[] = [
       "Choux pastry, Tahitian vanilla diplomat cream and a crackling craquelin lid.",
     image: "/images/products/creme-puff.jpg",
     price: "$4.00",
+    cloverItemId: "8JNNQMW6T8AEA",
   },
   {
     slug: "black-forest",
@@ -214,6 +253,7 @@ export const products: Product[] = [
     image: "/images/products/black-forest.jpg",
     price: "$8.00",
     tag: "GF",
+    cloverItemId: "G2WKAN44J37J4",
   },
   {
     slug: "lemon-square",
@@ -223,6 +263,7 @@ export const products: Product[] = [
       "Buttery shortbread base and a vibrant lemon curd, finished with a dusting of sugar.",
     image: "/images/products/lemon-square.jpg",
     price: "$7.00",
+    cloverItemId: "500QB5ZR31DB8",
   },
   {
     slug: "vanilla-kuchen",
@@ -232,6 +273,7 @@ export const products: Product[] = [
       "Fresh fruit baked into vanilla custard, cradled by a sweet dough tart shell.",
     image: "/images/products/vanilla-kuchen.jpg",
     price: "$6.00",
+    cloverItemId: "G10WYGQM7WQ3A",
   },
   // (Carrot Cake removed — seasonal item, not sold online per reunión 2026-05-20)
 
@@ -244,6 +286,7 @@ export const products: Product[] = [
       "Brown-butter dough and dark chocolate chunks. Best slightly warm.",
     image: "/images/products/chocolate-chip-cookie.jpg",
     price: "$3.00",
+    cloverItemId: "BZT370F6Z1RJM",
   },
   {
     slug: "spitzbub",
@@ -253,6 +296,7 @@ export const products: Product[] = [
       "A sandwich shortbread cookie filled with bright raspberry jam.",
     image: "/images/products/spitzbub.jpg",
     price: "$3.00",
+    cloverItemId: "YRTM437X57FCC",
   },
   {
     slug: "chocolate-sable",
@@ -262,6 +306,7 @@ export const products: Product[] = [
       "Crunchy chocolate sablé with chocolate chunks. Three pieces per bag.",
     image: "/images/products/chocolate-sable.jpg",
     price: "$6.00",
+    cloverItemId: "NDQMK4A4B6D8Y",
   },
   {
     slug: "basler-laeckerli",
@@ -271,6 +316,7 @@ export const products: Product[] = [
       "A 700-year-old Basel recipe — honey, almonds, candied orange, spices and Kirschwasser. Six pieces.",
     image: "/images/products/basler-laeckerli.jpg",
     price: "$7.00",
+    cloverItemId: "333Q09ZX0RHFE",
   },
 
   // --- Granola ---
@@ -281,6 +327,7 @@ export const products: Product[] = [
     description:
       "Slow-toasted oats, maple syrup, pecans, almonds, sunflower seeds and pumpkin seeds. Crunchy clusters, jar-ready.",
     image: "/images/products/granola.jpg",
+    cloverItemId: "WMHQDE7KZB9JM",
   },
 ];
 
