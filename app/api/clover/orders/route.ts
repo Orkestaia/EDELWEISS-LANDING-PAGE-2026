@@ -231,9 +231,6 @@ export async function POST(request: NextRequest) {
           unitQty: it.quantity,
           price: Math.round(it.price * 100),
           note: pickupNote,
-          // Enlaza el line item al item real de Clover para que se decremente
-          // el stock automáticamente al pagar.
-          ...(it.cloverItemId ? { itemRefUuid: it.cloverItemId } : {}),
         })),
       },
       redirectUrl: `${origin}/checkout/confirm`,
