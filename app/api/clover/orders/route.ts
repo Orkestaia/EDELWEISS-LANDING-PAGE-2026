@@ -278,6 +278,7 @@ export async function POST(request: NextRequest) {
     for (const it of itemsWithIds) {
       if (!it.cloverItemId) continue;
       try {
+        // 1. Read current stock
         const stockRes = await fetch(
           `${CLOVER_API_URL}/v3/merchants/${merchantId}/item_stocks/${it.cloverItemId}`,
           {
@@ -288,8 +289,13 @@ export async function POST(request: NextRequest) {
             cache: "no-store",
           }
         );
-        if (!stockRes.ok) continue;
+        if (!stockRes.ok) {
+          console.error(`[Stock] read failed for ${it.name}: ${stockRes.status}`);
+          continue;
+        }
         const stockData = await stockRes.json();
+        console.log(`[Stock] READ ${it.name} raw:`, JSON.stringify(stockData));
+
         const current =
           typeof stockData.stockCount === "number"
             ? stockData.stockCount
@@ -297,6 +303,11 @@ export async function POST(request: NextRequest) {
             ? Math.floor(stockData.quantity)
             : 0;
         const newCount = Math.max(0, current - it.quantity);
+
+        // 2. Write new stock — try both stockCount and quantity fields
+        const updateBody = { stockCount: newCount, quantity: newCount };
+        console.log(`[Stock] WRITE ${it.name} body:`, JSON.stringify(updateBody));
+
         const updateRes = await fetch(
           `${CLOVER_API_URL}/v3/merchants/${merchantId}/item_stocks/${it.cloverItemId}`,
           {
@@ -305,19 +316,32 @@ export async function POST(request: NextRequest) {
               Authorization: `Bearer ${apiToken}`,
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ stockCount: newCount }),
+            body: JSON.stringify(updateBody),
           }
         );
+        const updateText = await updateRes.text();
+        console.log(`[Stock] WRITE ${it.name} response: ${updateRes.status} ${updateText}`);
+
         if (!updateRes.ok) {
-          const errText = await updateRes.text();
-          console.error(
-            `[Stock] decrement failed for ${it.name} (${it.cloverItemId}):`,
-            errText
-          );
+          console.error(`[Stock] decrement failed for ${it.name} (${it.cloverItemId}):`, updateText);
         } else {
-          console.log(
-            `[Stock] ${it.name}: ${current} → ${newCount} (-${it.quantity})`
+          console.log(`[Stock] ${it.name}: ${current} → ${newCount} (-${it.quantity})`);
+
+          // 3. Verification read — confirm it actually changed
+          const verifyRes = await fetch(
+            `${CLOVER_API_URL}/v3/merchants/${merchantId}/item_stocks/${it.cloverItemId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${apiToken}`,
+                "Content-Type": "application/json",
+              },
+              cache: "no-store",
+            }
           );
+          if (verifyRes.ok) {
+            const verifyData = await verifyRes.json();
+            console.log(`[Stock] VERIFY ${it.name} after write:`, JSON.stringify(verifyData));
+          }
         }
       } catch (err) {
         console.error(`[Stock] decrement error for ${it.name}:`, err);
