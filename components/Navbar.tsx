@@ -4,6 +4,13 @@ import { useEffect, useState } from "react";
 import { Menu, X, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import {
+  motion,
+  useScroll,
+  useVelocity,
+  useSpring,
+  useTransform,
+} from "framer-motion";
 import { useCart } from "@/lib/cart";
 
 const nav: { href: string; label: string }[] = [
@@ -18,6 +25,17 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const { open: openCart, count } = useCart();
+
+  // Cartel oscila como un péndulo según la velocidad del scroll.
+  // Más velocidad → más balanceo. Spring suaviza la vuelta al reposo.
+  const { scrollY } = useScroll();
+  const scrollVelocity = useVelocity(scrollY);
+  const smoothVelocity = useSpring(scrollVelocity, {
+    damping: 22,
+    stiffness: 130,
+    mass: 0.8,
+  });
+  const signRotate = useTransform(smoothVelocity, [-2000, 0, 2000], [7, 0, -7]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -37,20 +55,27 @@ export function Navbar() {
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <div className="flex h-20 sm:h-24 items-center justify-between">
           {/* Logo: the carved Edelweiss Pastry Shop sign — appears to hang
-              from the top of the navbar. Slight pendulum-style hover. */}
+              from the top of the navbar. Swings pendulum-style with scroll
+              velocity, plus a subtle hover tilt. mix-blend-multiply removes
+              any residual white halo from the PNG against the cream bg. */}
           <Link
             href="/"
             aria-label="Edelweiss Pastry Shop — home"
-            className="group relative -mt-1 sm:-mt-2 origin-top hover:[transform:rotate(-1.2deg)] transition-transform duration-700 ease-out"
+            className="group relative -mt-1 sm:-mt-2 block"
           >
-            <Image
-              src="/images/edelweiss-sign.png"
-              alt="Edelweiss Pastry Shop"
-              width={180}
-              height={135}
-              priority
-              className="w-28 sm:w-36 lg:w-44 h-auto select-none drop-shadow-sm"
-            />
+            <motion.div
+              style={{ rotate: signRotate, transformOrigin: "50% 0%" }}
+              className="group-hover:[transform:rotate(-1.2deg)] transition-transform duration-700 ease-out"
+            >
+              <Image
+                src="/images/edelweiss-sign.png"
+                alt="Edelweiss Pastry Shop"
+                width={180}
+                height={135}
+                priority
+                className="w-28 sm:w-36 lg:w-44 h-auto select-none drop-shadow-sm [mix-blend-mode:multiply]"
+              />
+            </motion.div>
           </Link>
 
           <nav className="hidden lg:flex items-center gap-7 text-[0.72rem] tracking-[0.22em] uppercase text-cocoa/80">

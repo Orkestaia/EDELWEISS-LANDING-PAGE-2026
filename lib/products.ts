@@ -140,15 +140,6 @@ export const products: Product[] = [
     price: "$7.00",
   },
   {
-    slug: "braided-zopf",
-    name: "Braided Zopf",
-    category: "Breads",
-    description:
-      "The Sunday loaf of the Swiss table — enriched with milk and butter, brushed with egg yolk.",
-    image: "/images/products/zopf.jpg",
-    price: "$7.00",
-  },
-  {
     slug: "maine-grains-wheat",
     name: "Maine Grains Whole Wheat",
     category: "Breads",
