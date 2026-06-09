@@ -389,7 +389,10 @@ export async function POST(request: NextRequest) {
 
       // Decrement stock — only here in the webhook (after payment APPROVED)
       // This prevents phantom decrements from failed/abandoned checkouts
-      const qty = li.unitQty || 1;
+      // NOTE: Clover stores unitQty multiplied by 1000 (like price in cents)
+      // So unitQty=1000 means quantity 1, unitQty=2000 means quantity 2, etc.
+      const rawQty = li.unitQty || 1000;
+      const qty = rawQty >= 1000 ? Math.round(rawQty / 1000) : rawQty;
       try {
         const stockRes = await fetch(
           `${CLOVER_API_URL}/v3/merchants/${merchantId}/item_stocks/${cloverItemId}`,
@@ -441,6 +444,9 @@ export async function POST(request: NextRequest) {
         console.error(`[Stock] decrement error for ${li.name}:`, err);
       }
     }
+
+    // Small delay to avoid Clover API rate limiting (429) before order_types call
+    await new Promise((r) => setTimeout(r, 500));
 
     // Set order type to "Pickup" — shows on POS + may trigger printer labels
     const pickupSet = await setOrderTypePickup(apiToken, merchantId!, orderId);
