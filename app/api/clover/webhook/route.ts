@@ -109,46 +109,62 @@ async function getPickupOrderTypeId(
 ): Promise<string | null> {
   if (pickupTypeFetched) return cachedPickupTypeId;
 
-  try {
-    const res = await fetch(
-      `${CLOVER_API_URL}/v3/merchants/${merchantId}/order_types`,
-      {
-        headers: {
-          Authorization: `Bearer ${apiToken}`,
-          "Content-Type": "application/json",
-        },
-        cache: "no-store",
+  // Retry with backoff to handle Clover 429 rate limiting
+  const delays = [0, 1500, 3000]; // immediate, then 1.5s, then 3s
+  for (let attempt = 0; attempt < delays.length; attempt++) {
+    if (delays[attempt] > 0) {
+      console.log(`[Webhook] order_types retry ${attempt + 1}, waiting ${delays[attempt]}ms...`);
+      await new Promise((r) => setTimeout(r, delays[attempt]));
+    }
+
+    try {
+      const res = await fetch(
+        `${CLOVER_API_URL}/v3/merchants/${merchantId}/order_types`,
+        {
+          headers: {
+            Authorization: `Bearer ${apiToken}`,
+            "Content-Type": "application/json",
+          },
+          cache: "no-store",
+        }
+      );
+      if (res.status === 429) {
+        console.warn(`[Webhook] order_types 429 rate limited (attempt ${attempt + 1}/${delays.length})`);
+        continue; // retry
       }
-    );
-    if (!res.ok) {
-      console.error("[Webhook] fetch order_types failed:", res.status);
+      if (!res.ok) {
+        console.error("[Webhook] fetch order_types failed:", res.status);
+        return null;
+      }
+      const data = await res.json();
+      const types: any[] = data.elements || [];
+      console.log(
+        `[Webhook] order types available: ${types.map((t: any) => `${t.label} (${t.id})`).join(", ")}`
+      );
+
+      // Look for any order type containing "pickup" (case-insensitive)
+      // Matches: "Pickup", "In-store Pickup", "Pick-up", "Pickup Order", etc.
+      const pickup = types.find((t: any) => {
+        const label = (t.label || "").toLowerCase().replace(/[^a-z]/g, "");
+        return label.includes("pickup");
+      });
+
+      cachedPickupTypeId = pickup?.id || null;
+      pickupTypeFetched = true;
+      if (cachedPickupTypeId) {
+        console.log(`[Webhook] found Pickup order type: ${cachedPickupTypeId}`);
+      } else {
+        console.warn("[Webhook] no Pickup order type found in merchant config");
+      }
+      return cachedPickupTypeId;
+    } catch (err) {
+      console.error("[Webhook] getPickupOrderTypeId error:", err);
       return null;
     }
-    const data = await res.json();
-    const types: any[] = data.elements || [];
-    console.log(
-      `[Webhook] order types available: ${types.map((t: any) => `${t.label} (${t.id})`).join(", ")}`
-    );
-
-    // Look for any order type containing "pickup" (case-insensitive)
-    // Matches: "Pickup", "In-store Pickup", "Pick-up", "Pickup Order", etc.
-    const pickup = types.find((t: any) => {
-      const label = (t.label || "").toLowerCase().replace(/[^a-z]/g, "");
-      return label.includes("pickup");
-    });
-
-    cachedPickupTypeId = pickup?.id || null;
-    pickupTypeFetched = true;
-    if (cachedPickupTypeId) {
-      console.log(`[Webhook] found Pickup order type: ${cachedPickupTypeId}`);
-    } else {
-      console.warn("[Webhook] no Pickup order type found in merchant config");
-    }
-    return cachedPickupTypeId;
-  } catch (err) {
-    console.error("[Webhook] getPickupOrderTypeId error:", err);
-    return null;
   }
+
+  console.error("[Webhook] order_types failed after all retries");
+  return null;
 }
 
 /**
@@ -444,9 +460,6 @@ export async function POST(request: NextRequest) {
         console.error(`[Stock] decrement error for ${li.name}:`, err);
       }
     }
-
-    // Small delay to avoid Clover API rate limiting (429) before order_types call
-    await new Promise((r) => setTimeout(r, 500));
 
     // Set order type to "Pickup" — shows on POS + may trigger printer labels
     const pickupSet = await setOrderTypePickup(apiToken, merchantId!, orderId);
