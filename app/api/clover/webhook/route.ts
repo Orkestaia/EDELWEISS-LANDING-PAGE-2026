@@ -130,10 +130,11 @@ async function getPickupOrderTypeId(
       `[Webhook] order types available: ${types.map((t: any) => `${t.label} (${t.id})`).join(", ")}`
     );
 
-    // Look for "Pickup", "Pick-up", "Pick Up", case-insensitive
+    // Look for any order type containing "pickup" (case-insensitive)
+    // Matches: "Pickup", "In-store Pickup", "Pick-up", "Pickup Order", etc.
     const pickup = types.find((t: any) => {
       const label = (t.label || "").toLowerCase().replace(/[^a-z]/g, "");
-      return label === "pickup" || label === "pickuporder";
+      return label.includes("pickup");
     });
 
     cachedPickupTypeId = pickup?.id || null;
