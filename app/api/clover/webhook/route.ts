@@ -359,8 +359,9 @@ export async function POST(request: NextRequest) {
       `[Webhook] order ${orderId} has ${lineItems.length} line item(s)`
     );
 
-    // For each line item: find matching product and link to inventory
+    // For each line item: find matching product, link to inventory, decrement stock
     let linked = 0;
+    let decremented = 0;
     for (const li of lineItems) {
       const product = products.find((p) => p.name === li.name);
       if (!product) {
@@ -373,7 +374,7 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      // Link line item to inventory item (triggers printer labels)
+      // Link line item to inventory item
       if (li.id) {
         await linkLineItemToInventory(
           apiToken,
@@ -386,17 +387,68 @@ export async function POST(request: NextRequest) {
         linked++;
       }
 
-      // NOTE: stock decrement is done in orders/route.ts (decrement-immediate).
-      // Do NOT decrement here to avoid double-decrement.
+      // Decrement stock — only here in the webhook (after payment APPROVED)
+      // This prevents phantom decrements from failed/abandoned checkouts
+      const qty = li.unitQty || 1;
+      try {
+        const stockRes = await fetch(
+          `${CLOVER_API_URL}/v3/merchants/${merchantId}/item_stocks/${cloverItemId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${apiToken}`,
+              "Content-Type": "application/json",
+            },
+            cache: "no-store",
+          }
+        );
+        if (!stockRes.ok) {
+          console.error(`[Stock] read failed for ${li.name}: ${stockRes.status}`);
+          continue;
+        }
+        const stockData = await stockRes.json();
+        const current =
+          typeof stockData.stockCount === "number"
+            ? stockData.stockCount
+            : typeof stockData.quantity === "number"
+            ? Math.floor(stockData.quantity)
+            : null;
+
+        if (current === null) {
+          console.log(`[Stock] ${li.name}: no stock tracking, skipping`);
+          continue;
+        }
+
+        const newCount = Math.max(0, current - qty);
+        const updateRes = await fetch(
+          `${CLOVER_API_URL}/v3/merchants/${merchantId}/item_stocks/${cloverItemId}`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${apiToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ stockCount: newCount, quantity: newCount }),
+          }
+        );
+        if (updateRes.ok) {
+          console.log(`[Stock] ${li.name}: ${current} → ${newCount} (-${qty})`);
+          decremented++;
+        } else {
+          const errText = await updateRes.text();
+          console.error(`[Stock] decrement failed for ${li.name}:`, updateRes.status, errText);
+        }
+      } catch (err) {
+        console.error(`[Stock] decrement error for ${li.name}:`, err);
+      }
     }
 
     // Set order type to "Pickup" — shows on POS + may trigger printer labels
     const pickupSet = await setOrderTypePickup(apiToken, merchantId!, orderId);
 
     console.log(
-      `[Webhook] done — linked ${linked}/${lineItems.length} items, pickup=${pickupSet}`
+      `[Webhook] done — linked ${linked}/${lineItems.length} items, decremented ${decremented}, pickup=${pickupSet}`
     );
-    return NextResponse.json({ ok: true, linked, pickup: pickupSet });
+    return NextResponse.json({ ok: true, linked, decremented, pickup: pickupSet });
   } catch (err) {
     console.error("[Webhook] unexpected error:", err);
     return NextResponse.json({ ok: true, error: "internal" });

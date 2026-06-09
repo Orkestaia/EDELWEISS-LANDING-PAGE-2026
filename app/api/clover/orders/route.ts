@@ -270,83 +270,8 @@ export async function POST(request: NextRequest) {
       `[Clover Orders] Session ${checkoutSessionId} for ${customer.name} — pickup ${pickupDate} ${pickupSlot}`
     );
 
-    // DECREMENT DE STOCK (mejor esfuerzo, sin webhook).
-    // Decrementamos ya en este punto, antes de que el cliente complete el pago,
-    // porque ya hemos validado que hay stock y la conversión en Hosted Checkout
-    // suele ser muy alta. Si el cliente abandona, Edelweiss puede corregir.
-    // TODO: sustituir por webhook de Clover para precisión 100%.
-    for (const it of itemsWithIds) {
-      if (!it.cloverItemId) continue;
-      try {
-        // 1. Read current stock
-        const stockRes = await fetch(
-          `${CLOVER_API_URL}/v3/merchants/${merchantId}/item_stocks/${it.cloverItemId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${apiToken}`,
-              "Content-Type": "application/json",
-            },
-            cache: "no-store",
-          }
-        );
-        if (!stockRes.ok) {
-          console.error(`[Stock] read failed for ${it.name}: ${stockRes.status}`);
-          continue;
-        }
-        const stockData = await stockRes.json();
-        console.log(`[Stock] READ ${it.name} raw:`, JSON.stringify(stockData));
-
-        const current =
-          typeof stockData.stockCount === "number"
-            ? stockData.stockCount
-            : typeof stockData.quantity === "number"
-            ? Math.floor(stockData.quantity)
-            : 0;
-        const newCount = Math.max(0, current - it.quantity);
-
-        // 2. Write new stock — try both stockCount and quantity fields
-        const updateBody = { stockCount: newCount, quantity: newCount };
-        console.log(`[Stock] WRITE ${it.name} body:`, JSON.stringify(updateBody));
-
-        const updateRes = await fetch(
-          `${CLOVER_API_URL}/v3/merchants/${merchantId}/item_stocks/${it.cloverItemId}`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${apiToken}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(updateBody),
-          }
-        );
-        const updateText = await updateRes.text();
-        console.log(`[Stock] WRITE ${it.name} response: ${updateRes.status} ${updateText}`);
-
-        if (!updateRes.ok) {
-          console.error(`[Stock] decrement failed for ${it.name} (${it.cloverItemId}):`, updateText);
-        } else {
-          console.log(`[Stock] ${it.name}: ${current} → ${newCount} (-${it.quantity})`);
-
-          // 3. Verification read — confirm it actually changed
-          const verifyRes = await fetch(
-            `${CLOVER_API_URL}/v3/merchants/${merchantId}/item_stocks/${it.cloverItemId}`,
-            {
-              headers: {
-                Authorization: `Bearer ${apiToken}`,
-                "Content-Type": "application/json",
-              },
-              cache: "no-store",
-            }
-          );
-          if (verifyRes.ok) {
-            const verifyData = await verifyRes.json();
-            console.log(`[Stock] VERIFY ${it.name} after write:`, JSON.stringify(verifyData));
-          }
-        }
-      } catch (err) {
-        console.error(`[Stock] decrement error for ${it.name}:`, err);
-      }
-    }
+    // Stock decrement is now handled in the webhook (only after APPROVED payment).
+    // This avoids phantom decrements when payment fails or customer abandons checkout.
 
     return NextResponse.json({
       checkoutUrl,
