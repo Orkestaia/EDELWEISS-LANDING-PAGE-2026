@@ -464,6 +464,58 @@ export async function POST(request: NextRequest) {
     // Set order type to "Pickup" — shows on POS + may trigger printer labels
     const pickupSet = await setOrderTypePickup(apiToken, merchantId!, orderId);
 
+    // Send order notification to n8n → email to Edelweiss
+    try {
+      // Parse pickup note from first line item to extract customer details
+      const firstNote: string = lineItems[0]?.note || "";
+      const noteFields: Record<string, string> = {};
+      for (const part of firstNote.split(" | ")) {
+        const colonIdx = part.indexOf(": ");
+        if (colonIdx > 0) {
+          noteFields[part.slice(0, colonIdx).trim()] = part.slice(colonIdx + 2).trim();
+        }
+      }
+
+      const pickupRaw = noteFields["Pick-up"] || "";
+      const [pickupDate, pickupTime] = pickupRaw.includes(" at ")
+        ? pickupRaw.split(" at ")
+        : [pickupRaw, ""];
+
+      const n8nPayload = {
+        orderId,
+        customerName: noteFields["Customer"] || "Online Customer",
+        customerEmail: noteFields["Email"] || "",
+        customerPhone: noteFields["Phone"] || "",
+        pickupDate: pickupDate.trim(),
+        pickupTime: pickupTime.trim(),
+        notes: noteFields["Notes"] || "",
+        items: lineItems.map((li: any) => ({
+          name: li.name,
+          qty: li.unitQty >= 1000 ? Math.round(li.unitQty / 1000) : (li.unitQty || 1),
+          price: `$${((li.price || 0) / 100).toFixed(2)}`,
+        })),
+        total: `$${(lineItems.reduce((s: number, li: any) => {
+          const q = li.unitQty >= 1000 ? Math.round(li.unitQty / 1000) : (li.unitQty || 1);
+          return s + (li.price || 0) * q;
+        }, 0) / 100).toFixed(2)}`,
+      };
+
+      console.log("[Webhook] sending n8n notification:", JSON.stringify(n8nPayload));
+
+      const n8nRes = await fetch(
+        "https://acgrowthmarketing.app.n8n.cloud/webhook/edelweiss-order",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(n8nPayload),
+        }
+      );
+      console.log(`[Webhook] n8n response: ${n8nRes.status}`);
+    } catch (err) {
+      // Don't fail the webhook if n8n notification fails
+      console.error("[Webhook] n8n notification error:", err);
+    }
+
     console.log(
       `[Webhook] done — linked ${linked}/${lineItems.length} items, decremented ${decremented}, pickup=${pickupSet}`
     );

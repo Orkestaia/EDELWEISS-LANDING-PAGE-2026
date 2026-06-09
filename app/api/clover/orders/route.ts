@@ -211,6 +211,8 @@ export async function POST(request: NextRequest) {
 
     const pickupNote = [
       "ONLINE PICK-UP ORDER",
+      `Customer: ${customer.name}`,
+      `Email: ${customer.email}`,
       `Pick-up: ${pickupDate} at ${pickupSlot}`,
       `Phone: ${customer.phone || "—"}`,
       notes ? `Notes: ${notes}` : null,
