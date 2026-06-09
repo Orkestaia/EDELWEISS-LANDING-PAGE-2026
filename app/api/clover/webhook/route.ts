@@ -9,7 +9,8 @@
  * On APPROVED we:
  *   1. Log the payment (audit trail)
  *   2. Find the order via the payment ID
- *   3. Link line items to inventory items (triggers printer labels)
+ *   3. Link line items to inventory items
+ *   4. Set order type to "Pickup" (shows on POS + may trigger printer labels)
  *
  * Stock decrement is handled in orders/route.ts (decrement-immediate).
  *
@@ -92,6 +93,104 @@ function verifySignature(
     } catch {
       return false;
     }
+  }
+}
+
+/**
+ * Finds the "Pickup" order type in the merchant's configured order types.
+ * Caches the result for the lifetime of the serverless function instance.
+ */
+let cachedPickupTypeId: string | null = null;
+let pickupTypeFetched = false;
+
+async function getPickupOrderTypeId(
+  apiToken: string,
+  merchantId: string
+): Promise<string | null> {
+  if (pickupTypeFetched) return cachedPickupTypeId;
+
+  try {
+    const res = await fetch(
+      `${CLOVER_API_URL}/v3/merchants/${merchantId}/order_types`,
+      {
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+      }
+    );
+    if (!res.ok) {
+      console.error("[Webhook] fetch order_types failed:", res.status);
+      return null;
+    }
+    const data = await res.json();
+    const types: any[] = data.elements || [];
+    console.log(
+      `[Webhook] order types available: ${types.map((t: any) => `${t.label} (${t.id})`).join(", ")}`
+    );
+
+    // Look for "Pickup", "Pick-up", "Pick Up", case-insensitive
+    const pickup = types.find((t: any) => {
+      const label = (t.label || "").toLowerCase().replace(/[^a-z]/g, "");
+      return label === "pickup" || label === "pickuporder";
+    });
+
+    cachedPickupTypeId = pickup?.id || null;
+    pickupTypeFetched = true;
+    if (cachedPickupTypeId) {
+      console.log(`[Webhook] found Pickup order type: ${cachedPickupTypeId}`);
+    } else {
+      console.warn("[Webhook] no Pickup order type found in merchant config");
+    }
+    return cachedPickupTypeId;
+  } catch (err) {
+    console.error("[Webhook] getPickupOrderTypeId error:", err);
+    return null;
+  }
+}
+
+/**
+ * Sets the order type to "Pickup" so it appears correctly on the POS
+ * and may trigger printer labels configured for that order type.
+ */
+async function setOrderTypePickup(
+  apiToken: string,
+  merchantId: string,
+  orderId: string
+): Promise<boolean> {
+  const pickupTypeId = await getPickupOrderTypeId(apiToken, merchantId);
+  if (!pickupTypeId) return false;
+
+  try {
+    const res = await fetch(
+      `${CLOVER_API_URL}/v3/merchants/${merchantId}/orders/${orderId}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ orderType: { id: pickupTypeId } }),
+      }
+    );
+    if (res.ok) {
+      console.log(
+        `[Webhook] order ${orderId} set to Pickup type (${pickupTypeId})`
+      );
+      return true;
+    } else {
+      const errText = await res.text();
+      console.error(
+        `[Webhook] setOrderType failed:`,
+        res.status,
+        errText
+      );
+      return false;
+    }
+  } catch (err) {
+    console.error("[Webhook] setOrderType error:", err);
+    return false;
   }
 }
 
@@ -290,8 +389,13 @@ export async function POST(request: NextRequest) {
       // Do NOT decrement here to avoid double-decrement.
     }
 
-    console.log(`[Webhook] done — linked ${linked}/${lineItems.length} items`);
-    return NextResponse.json({ ok: true, linked });
+    // Set order type to "Pickup" — shows on POS + may trigger printer labels
+    const pickupSet = await setOrderTypePickup(apiToken, merchantId!, orderId);
+
+    console.log(
+      `[Webhook] done — linked ${linked}/${lineItems.length} items, pickup=${pickupSet}`
+    );
+    return NextResponse.json({ ok: true, linked, pickup: pickupSet });
   } catch (err) {
     console.error("[Webhook] unexpected error:", err);
     return NextResponse.json({ ok: true, error: "internal" });
