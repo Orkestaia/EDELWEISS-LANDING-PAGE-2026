@@ -265,12 +265,10 @@ export async function POST(request: NextRequest) {
   const signatureValid = verifySignature(rawBody, signatureHeader, webhookSecret);
 
   if (!signatureValid) {
-    console.warn("[Webhook] signature MISMATCH — processing anyway (debug mode)");
-    // TODO: enforce signature before go-live:
-    // return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
-  } else {
-    console.log("[Webhook] signature verified OK");
+    console.error("[Webhook] invalid signature — rejecting");
+    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
+  console.log("[Webhook] signature verified OK");
 
   let payload: any;
   try {
