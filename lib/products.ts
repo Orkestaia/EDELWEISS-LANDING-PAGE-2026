@@ -175,11 +175,10 @@ export const products: Product[] = [
     name: "Maine Grains Whole Wheat",
     category: "Breads",
     description:
-      "Naturally leavened whole wheat with a toasted sesame crust. Dense, fragrant, alive.",
+      "Naturally leavened whole wheat sourdough. Dense, fragrant, alive.",
     image: "/images/products/rye-sesame.jpg",
     price: "$6.50",
-    // TODO: confirmar con Valentina qué item de Clover usar (no hay "Whole Wheat" en su inventario real).
-    // Sin cloverItemId el producto se vende como antes (line item custom, sin tracking de stock).
+    cloverItemId: "ZC8TCHQEZBJC8",
   },
   {
     slug: "daily-focaccia",
