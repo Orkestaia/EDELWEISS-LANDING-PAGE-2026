@@ -8,6 +8,7 @@ import { Check, XCircle } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { formatPrice } from "@/lib/cart";
+import { trackPurchase } from "@/lib/analytics";
 
 interface OrderData {
   name: string;
@@ -53,11 +54,15 @@ function ConfirmContent() {
     const raw = sessionStorage.getItem("edelweiss_order");
     if (raw) {
       try {
-        setOrder(JSON.parse(raw));
+        const parsed: OrderData = JSON.parse(raw);
+        setOrder(parsed);
         sessionStorage.removeItem("edelweiss_order");
+        if (searchParams.get("cancelled") !== "true") {
+          trackPurchase(orderId || "unknown", parsed.total);
+        }
       } catch {}
     }
-  }, []);
+  }, [orderId, searchParams]);
 
   // Estado de cancelación si Clover redirige sin pago completado.
   const cancelled = searchParams.get("cancelled") === "true";

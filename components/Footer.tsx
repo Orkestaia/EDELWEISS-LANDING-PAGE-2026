@@ -131,9 +131,17 @@ export function Footer() {
       <div className="border-t border-cream-50/10">
         <div className="mx-auto max-w-7xl px-5 sm:px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-cream-50/55">
           <p>© {new Date().getFullYear()} Edelweiss Confections LLC · All Rights Reserved</p>
-          <p className="uppercase tracking-[0.22em]">
-            Crafted with Swiss patience.
-          </p>
+          <div className="flex items-center gap-5">
+            <Link href="/privacy" className="hover:text-cream-50">
+              Privacy Policy
+            </Link>
+            <Link href="/cookies" className="hover:text-cream-50">
+              Cookie Policy
+            </Link>
+            <p className="uppercase tracking-[0.22em] hidden sm:block">
+              Crafted with Swiss patience.
+            </p>
+          </div>
         </div>
       </div>
     </footer>

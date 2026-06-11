@@ -7,6 +7,7 @@ import { Clock, ShoppingBag, ArrowLeft, Loader2 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { useCart, formatPrice } from "@/lib/cart";
+import { trackBeginCheckout } from "@/lib/analytics";
 
 type Status = "idle" | "submitting" | "error";
 
@@ -110,6 +111,15 @@ export default function CheckoutPage() {
           pickupSlot,
           total: data.total,
         })
+      );
+      trackBeginCheckout(
+        items.map((i) => ({
+          name: i.name,
+          slug: i.slug,
+          price: i.price,
+          quantity: i.quantity,
+        })),
+        total
       );
       clear();
       window.location.href = data.checkoutUrl;

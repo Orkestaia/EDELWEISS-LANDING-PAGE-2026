@@ -4,6 +4,8 @@ import "./globals.css";
 import { CartProvider } from "@/lib/cart";
 import { CartDrawer } from "@/components/CartDrawer";
 import { CartButton } from "@/components/CartButton";
+import { CookieConsent } from "@/components/CookieConsent";
+import { AnalyticsScripts } from "@/components/AnalyticsScripts";
 
 const display = Cormorant_Garamond({
   subsets: ["latin"],
@@ -134,11 +136,13 @@ export default function RootLayout({
         />
       </head>
       <body>
+        <AnalyticsScripts />
         <CartProvider>
           {children}
           <CartDrawer />
           <CartButton />
         </CartProvider>
+        <CookieConsent />
       </body>
     </html>
   );

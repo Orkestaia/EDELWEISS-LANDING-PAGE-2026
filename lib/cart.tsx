@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { trackAddToCart } from "@/lib/analytics";
 
 export interface CartItem {
   slug: string;
@@ -73,6 +74,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return [...prev, { ...item, quantity: qty }];
       });
       setIsOpen(true);
+      trackAddToCart({
+        name: item.name,
+        slug: item.slug,
+        price: item.price,
+        quantity: qty,
+      });
     },
     []
   );
