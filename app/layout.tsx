@@ -75,6 +75,7 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+  manifest: "/site.webmanifest",
 };
 
 // Schema.org LocalBusiness / Bakery — strong signal for Google local SEO.
