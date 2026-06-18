@@ -59,6 +59,10 @@ export function AlpineHeritage() {
   // Scroll hint disappears as soon as you start.
   const hintOpacity = useTransform(scrollYProgress, [0, 0.1], [1, 0]);
 
+  // Edelweiss flower fades in and drifts up gently as you scroll.
+  const flowerOpacity = useTransform(scrollYProgress, [0.1, 0.45], [0, 0.22]);
+  const flowerY = useTransform(scrollYProgress, [0, 1], ["8%", "-6%"]);
+
   return (
     <section
       ref={ref}
@@ -138,6 +142,23 @@ export function AlpineHeritage() {
             every truffle, every croissant we bake on Main Street, Biddeford.
           </motion.p>
         </motion.div>
+
+        {/* Edelweiss flower — subtle parallax overlay, bottom-right */}
+        {!reduce && (
+          <motion.div
+            aria-hidden
+            style={{ opacity: flowerOpacity, y: flowerY }}
+            className="pointer-events-none absolute bottom-0 right-0 w-72 h-72 sm:w-96 sm:h-96"
+          >
+            <Image
+              src="/images/heritage/edelweiss.jpg"
+              alt=""
+              fill
+              sizes="400px"
+              className="object-cover rounded-tl-[3rem] mix-blend-screen"
+            />
+          </motion.div>
+        )}
 
         {/* Scroll hint */}
         {!reduce && (

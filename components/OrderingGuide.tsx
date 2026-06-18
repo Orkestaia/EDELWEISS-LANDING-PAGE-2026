@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { Plus, Clock, ShoppingBag, Award, Truck } from "lucide-react";
+import { Plus, Clock, ShoppingBag, Award, Truck, RefreshCw } from "lucide-react";
 import { Reveal } from "./Reveal";
 import { AlpineSilhouette } from "./AlpineBackground";
 
@@ -15,6 +15,13 @@ type Item = {
 };
 
 const items: Item[] = [
+  {
+    icon: <RefreshCw className="h-5 w-5" />,
+    title: "How availability works",
+    short: "Live · Updated in real time",
+    body:
+      "We bake a set amount every morning and that count is shared between our counter and this website. When a croissant sells in the bakery, it comes off the online total too — automatically. If an item shows 'Only 2 left,' that is what we truly have. If it's gone, you'll see 'Sold out today.' Come back tomorrow — we'll bake more.",
+  },
   {
     icon: <Clock className="h-5 w-5" />,
     title: "Scheduling your pick-up",
@@ -46,6 +53,7 @@ const items: Item[] = [
 ];
 
 const quickRef = [
+  ["Availability", "Live stock — shared between bakery & website"],
   ["Pick-Up Time", "Hourly slots — note specific times in Special Instructions"],
   ["Bulk Orders", "Online caps apply · Call us to bypass"],
   ["Loyalty Points", "Earned & redeemed in-person at the counter"],
@@ -98,7 +106,7 @@ export function OrderingGuide() {
             <p className="mt-6 text-cream-50/75 text-lg leading-relaxed max-w-md">
               Shopping with us is easy. Five things to know before you place
               your order — so the moment you walk in, your bag is already
-              packed.
+              packed. No surprises.
             </p>
           </Reveal>
 

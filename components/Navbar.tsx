@@ -18,6 +18,7 @@ const nav: { href: string; label: string }[] = [
   { href: "/menu", label: "Menu" },
   { href: "/chocolates", label: "Chocolates" },
   { href: "/surprise-bag", label: "Surprise Bag" },
+  { href: "/orders", label: "Special Orders" },
   { href: "/#visit", label: "Visit" },
 ];
 

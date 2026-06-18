@@ -68,6 +68,11 @@ function ShowcaseHeader() {
           The full catalog of what we bake — organized the way our shelves are.
           Add what you love to your order and pick it up fresh.
         </p>
+        <p className="mt-3 text-sm leading-relaxed text-cocoa/55">
+          Stock updates in real time. Our counter and this website share the
+          same count — when something sells in the bakery, it comes off the
+          online total too. What you see is what we have.
+        </p>
       </Reveal>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { X, ShoppingBag, Clock, Calendar, MapPin } from "lucide-react";
+import { X, ShoppingBag, Clock, Calendar, MapPin, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { EdelweissMark } from "./EdelweissMark";
 
@@ -10,6 +10,11 @@ const STORAGE_KEY = "edelweiss_intro_modal_v2";
 const DELAY_MS = 4500;
 
 const steps = [
+  {
+    icon: <RefreshCw size={15} />,
+    title: "Stock updates live",
+    body: "We bake a set amount each morning. That count is shared between our counter and this website — when something sells in the bakery, it comes off the online total too. If an item is gone, it's truly gone for today.",
+  },
   {
     icon: <ShoppingBag size={15} />,
     title: "Pick your pastries",
@@ -120,7 +125,7 @@ export function NewsletterModal() {
                 <span className="italic text-forest"> is this simple.</span>
               </h2>
               <p className="mt-2.5 text-sm text-cocoa/65 leading-relaxed">
-                Baked fresh every morning. Four small steps:
+                Baked fresh every morning. Five things to know:
               </p>
 
               {/* Steps */}
