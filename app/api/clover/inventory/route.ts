@@ -70,8 +70,9 @@ export async function GET() {
           Authorization: `Bearer ${apiToken}`,
           "Content-Type": "application/json",
         },
-        // Cache de 30s para no saturar Clover en visitas concurrentes.
-        next: { revalidate: 30 },
+        // 10s server-side dedup: multiple concurrent users share one Clover call.
+        // No CDN caching (see Cache-Control below) so browsers always get fresh data.
+        next: { revalidate: 10 },
       }
     );
 
@@ -115,7 +116,9 @@ export async function GET() {
       },
       {
         headers: {
-          "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
+          // no-store: CDN and browsers must not cache this response.
+          // Freshness is guaranteed by the 10s server-side revalidate above.
+          "Cache-Control": "no-store",
         },
       }
     );

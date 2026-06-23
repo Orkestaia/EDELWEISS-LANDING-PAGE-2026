@@ -39,10 +39,19 @@ export function useInventory(): { stocks: StockMap; loaded: boolean } {
     };
 
     fetchStocks();
-    const interval = setInterval(fetchStocks, 60_000);
+    // Poll every 30s (down from 60s) for fresher in-store sync.
+    const interval = setInterval(fetchStocks, 30_000);
+
+    // Refetch immediately when the user comes back to this tab (e.g. from Instagram).
+    const onVisible = () => {
+      if (document.visibilityState === "visible") fetchStocks();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
     return () => {
       cancelled = true;
       clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, []);
 
