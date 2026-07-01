@@ -33,10 +33,14 @@ function buildPickupDates() {
   return out;
 }
 
-function slotsForWeekday(weekday: number) {
-  const start = weekday === 0 || weekday === 6 ? 8 : 7; // sáb/dom abren a las 8
+const JULY4_DATE = "2026-07-04";
+
+function slotsForDate(dateValue: string, weekday: number) {
+  const start = weekday === 0 || weekday === 6 ? 8 : 7;
+  // July 4th closes at noon — last slot is 11:00 (pickup by 12pm).
+  const end = dateValue === JULY4_DATE ? 11 : 13;
   const slots: string[] = [];
-  for (let h = start; h <= 13; h++) slots.push(`${String(h).padStart(2, "0")}:00`);
+  for (let h = start; h <= end; h++) slots.push(`${String(h).padStart(2, "0")}:00`);
   return slots;
 }
 
@@ -70,8 +74,8 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null);
 
   const slots = useMemo(() => {
-    const wd = dates.find((d) => d.value === pickupDate)?.weekday ?? 2;
-    return slotsForWeekday(wd);
+    const entry = dates.find((d) => d.value === pickupDate);
+    return slotsForDate(pickupDate, entry?.weekday ?? 2);
   }, [pickupDate, dates]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -265,6 +269,11 @@ export default function CheckoutPage() {
                   placeholder="Allergies, a specific time inside the hour, a message…"
                 />
               </Field>
+              {pickupDate === JULY4_DATE && (
+                <div className="rounded-xl border border-mustard/40 bg-mustard/10 px-4 py-3 text-sm text-cocoa">
+                  🎆 <strong>July 4th special hours:</strong> we close at noon. Last pick-up slot is 11:00 AM.
+                </div>
+              )}
               <p className="flex items-center gap-2 text-xs text-cocoa/55">
                 <Clock size={13} /> Pick-up Tuesday–Sunday, 7am–2pm. Closed
                 Mondays.

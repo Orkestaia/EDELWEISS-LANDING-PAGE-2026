@@ -11,6 +11,7 @@ import { Visit } from "@/components/Visit";
 import { Newsletter } from "@/components/Newsletter";
 import { Footer } from "@/components/Footer";
 import { NewsletterModal } from "@/components/NewsletterModal";
+import { HolidayNotice } from "@/components/HolidayNotice";
 
 export default function Home() {
   return (
@@ -28,6 +29,7 @@ export default function Home() {
       <Newsletter />
       <Footer />
       <NewsletterModal />
+      <HolidayNotice />
     </main>
   );
 }

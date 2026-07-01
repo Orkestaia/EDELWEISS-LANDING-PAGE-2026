@@ -14,6 +14,13 @@ const hours = [
   ["Sunday", "8am – 2pm"],
 ];
 
+function isJuly4Week() {
+  const now = new Date();
+  const from = new Date("2026-07-01T00:00:00");
+  const until = new Date("2026-07-04T23:59:59");
+  return now >= from && now <= until;
+}
+
 export function Visit() {
   return (
     <section id="visit" className="relative isolate bg-cream-100 paper overflow-hidden">
@@ -115,22 +122,36 @@ export function Visit() {
                 <Clock size={14} />
                 Bakery hours
               </div>
+              {isJuly4Week() && (
+                <div className="mb-5 rounded-xl border border-mustard/50 bg-mustard/10 px-4 py-3">
+                  <p className="text-xs uppercase tracking-[0.2em] text-mustard font-semibold mb-0.5">
+                    🎆 July 4th — Special hours
+                  </p>
+                  <p className="text-sm text-cocoa">
+                    This Saturday we open <strong>8am – 12pm only.</strong>{" "}
+                    Happy Independence Day!
+                  </p>
+                </div>
+              )}
               <dl className="mt-6 divide-y divide-cocoa/10">
-                {hours.map(([d, t]) => (
-                  <div
-                    key={d}
-                    className="grid grid-cols-2 py-3.5 items-center"
-                  >
-                    <dt className="font-display text-xl text-cocoa">{d}</dt>
-                    <dd
-                      className={`text-right text-sm tracking-[0.18em] uppercase ${
-                        t === "Closed" ? "text-rust" : "text-cocoa/75"
-                      }`}
+                {hours.map(([d, t]) => {
+                  const isSatJuly4 = d === "Saturday" && isJuly4Week();
+                  return (
+                    <div
+                      key={d}
+                      className="grid grid-cols-2 py-3.5 items-center"
                     >
-                      {t}
-                    </dd>
-                  </div>
-                ))}
+                      <dt className="font-display text-xl text-cocoa">{d}</dt>
+                      <dd
+                        className={`text-right text-sm tracking-[0.18em] uppercase ${
+                          t === "Closed" ? "text-rust" : isSatJuly4 ? "text-mustard font-semibold" : "text-cocoa/75"
+                        }`}
+                      >
+                        {isSatJuly4 ? "8am – 12pm ★" : t}
+                      </dd>
+                    </div>
+                  );
+                })}
               </dl>
               <p className="mt-6 text-sm text-cocoa/60">
                 Closed Mondays. Hours may shift slightly around holidays — keep

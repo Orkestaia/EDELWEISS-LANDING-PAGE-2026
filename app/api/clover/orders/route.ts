@@ -105,6 +105,14 @@ function validate(body: any): { valid: boolean; error?: string } {
   if (d.getUTCDay() === 1) {
     return { valid: false, error: "We are closed on Mondays." };
   }
+  // July 4th 2026: special hours 8am–12pm. Last pick-up slot is 11:00.
+  if (body.pickupDate === "2026-07-04" && body.pickupSlot > "11:00") {
+    return {
+      valid: false,
+      error:
+        "We close at noon on July 4th. Please select a pick-up time of 11:00 AM or earlier.",
+    };
+  }
   // No permitir fechas pasadas (comparación de cadenas YYYY-MM-DD).
   const todayStr = new Date().toISOString().slice(0, 10);
   if (body.pickupDate < todayStr) {
