@@ -22,6 +22,10 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { products, effectiveCloverItemId } from "@/lib/products";
 
+// Give this route more time than Vercel's default (was silently truncating
+// the webhook mid-execution on slow runs — see [Webhook] timeout note below).
+export const maxDuration = 30;
+
 const isSandbox = process.env.NEXT_PUBLIC_ENV === "sandbox";
 const CLOVER_API_URL = isSandbox
   ? "https://apisandbox.dev.clover.com"
@@ -107,6 +111,12 @@ async function getPickupOrderTypeId(
   apiToken: string,
   merchantId: string
 ): Promise<string | null> {
+  // Skip the lookup (and its 429 retries) entirely if the ID is already known.
+  // Find it once from the "[Webhook] found Pickup order type: XXXX" log line,
+  // then set CLOVER_PICKUP_ORDER_TYPE_ID in Vercel env vars.
+  const knownId = process.env.CLOVER_PICKUP_ORDER_TYPE_ID;
+  if (knownId) return knownId;
+
   if (pickupTypeFetched) return cachedPickupTypeId;
 
   // Retry with backoff to handle Clover 429 rate limiting
@@ -373,6 +383,62 @@ export async function POST(request: NextRequest) {
       `[Webhook] order ${orderId} has ${lineItems.length} line item(s)`
     );
 
+    // Send order notification to n8n → email to Edelweiss FIRST, before the
+    // slower/rate-limited steps below. This is the most time-critical step
+    // for the bakery (they need to know a pickup order came in) — if the
+    // function gets cut off by Vercel's execution time limit later on (e.g.
+    // Clover 429s during order-type lookup), the email must already be sent.
+    try {
+      // Parse pickup note from first line item to extract customer details
+      const firstNote: string = lineItems[0]?.note || "";
+      const noteFields: Record<string, string> = {};
+      for (const part of firstNote.split(" | ")) {
+        const colonIdx = part.indexOf(": ");
+        if (colonIdx > 0) {
+          noteFields[part.slice(0, colonIdx).trim()] = part.slice(colonIdx + 2).trim();
+        }
+      }
+
+      const pickupRaw = noteFields["Pick-up"] || "";
+      const [pickupDate, pickupTime] = pickupRaw.includes(" at ")
+        ? pickupRaw.split(" at ")
+        : [pickupRaw, ""];
+
+      const n8nPayload = {
+        orderId,
+        customerName: noteFields["Customer"] || "Online Customer",
+        customerEmail: noteFields["Email"] || "",
+        customerPhone: noteFields["Phone"] || "",
+        pickupDate: pickupDate.trim(),
+        pickupTime: pickupTime.trim(),
+        notes: noteFields["Notes"] || "",
+        items: lineItems.map((li: any) => ({
+          name: li.name,
+          qty: li.unitQty >= 1000 ? Math.round(li.unitQty / 1000) : (li.unitQty || 1),
+          price: `$${((li.price || 0) / 100).toFixed(2)}`,
+        })),
+        total: `$${(lineItems.reduce((s: number, li: any) => {
+          const q = li.unitQty >= 1000 ? Math.round(li.unitQty / 1000) : (li.unitQty || 1);
+          return s + (li.price || 0) * q;
+        }, 0) / 100).toFixed(2)}`,
+      };
+
+      console.log("[Webhook] sending n8n notification:", JSON.stringify(n8nPayload));
+
+      const n8nRes = await fetch(
+        "https://acgrowthmarketing.app.n8n.cloud/webhook/edelweiss-order",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(n8nPayload),
+        }
+      );
+      console.log(`[Webhook] n8n response: ${n8nRes.status}`);
+    } catch (err) {
+      // Don't fail the webhook if n8n notification fails
+      console.error("[Webhook] n8n notification error:", err);
+    }
+
     // For each line item: find matching product, link to inventory, decrement stock
     let linked = 0;
     let decremented = 0;
@@ -459,60 +525,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Set order type to "Pickup" — shows on POS + may trigger printer labels
+    // Set order type to "Pickup" — shows on POS + may trigger printer labels.
+    // Runs last: it's the slowest, most rate-limited step (Clover 429s on
+    // order_types), and the email notification above must not depend on it.
     const pickupSet = await setOrderTypePickup(apiToken, merchantId!, orderId);
-
-    // Send order notification to n8n → email to Edelweiss
-    try {
-      // Parse pickup note from first line item to extract customer details
-      const firstNote: string = lineItems[0]?.note || "";
-      const noteFields: Record<string, string> = {};
-      for (const part of firstNote.split(" | ")) {
-        const colonIdx = part.indexOf(": ");
-        if (colonIdx > 0) {
-          noteFields[part.slice(0, colonIdx).trim()] = part.slice(colonIdx + 2).trim();
-        }
-      }
-
-      const pickupRaw = noteFields["Pick-up"] || "";
-      const [pickupDate, pickupTime] = pickupRaw.includes(" at ")
-        ? pickupRaw.split(" at ")
-        : [pickupRaw, ""];
-
-      const n8nPayload = {
-        orderId,
-        customerName: noteFields["Customer"] || "Online Customer",
-        customerEmail: noteFields["Email"] || "",
-        customerPhone: noteFields["Phone"] || "",
-        pickupDate: pickupDate.trim(),
-        pickupTime: pickupTime.trim(),
-        notes: noteFields["Notes"] || "",
-        items: lineItems.map((li: any) => ({
-          name: li.name,
-          qty: li.unitQty >= 1000 ? Math.round(li.unitQty / 1000) : (li.unitQty || 1),
-          price: `$${((li.price || 0) / 100).toFixed(2)}`,
-        })),
-        total: `$${(lineItems.reduce((s: number, li: any) => {
-          const q = li.unitQty >= 1000 ? Math.round(li.unitQty / 1000) : (li.unitQty || 1);
-          return s + (li.price || 0) * q;
-        }, 0) / 100).toFixed(2)}`,
-      };
-
-      console.log("[Webhook] sending n8n notification:", JSON.stringify(n8nPayload));
-
-      const n8nRes = await fetch(
-        "https://acgrowthmarketing.app.n8n.cloud/webhook/edelweiss-order",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(n8nPayload),
-        }
-      );
-      console.log(`[Webhook] n8n response: ${n8nRes.status}`);
-    } catch (err) {
-      // Don't fail the webhook if n8n notification fails
-      console.error("[Webhook] n8n notification error:", err);
-    }
 
     console.log(
       `[Webhook] done — linked ${linked}/${lineItems.length} items, decremented ${decremented}, pickup=${pickupSet}`
