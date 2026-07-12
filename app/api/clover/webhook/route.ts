@@ -9,10 +9,15 @@
  * On APPROVED we:
  *   1. Log the payment (audit trail)
  *   2. Find the order via the payment ID
- *   3. Link line items to inventory items
- *   4. Set order type to "Pickup" (shows on POS + may trigger printer labels)
+ *   3. Send the n8n order-notification email
+ *   4. Decrement stock (batched per item, with 429 retry)
+ *   5. Set order type to "Pickup" (shows on POS)
  *
- * Stock decrement is handled in orders/route.ts (decrement-immediate).
+ * NOTE (2026-07-11): the old "link line items to inventory" step was removed.
+ * Clover returns 200 for that POST on locked orders but silently ignores it
+ * (verified: the item ref never persists), so it only burned rate-limit
+ * budget and produced false-positive logs. Printer labels need the
+ * iFrame+API migration anyway.
  *
  * SIGNATURE: Clover signs webhooks with format "t=TIMESTAMP,v1=HMAC".
  * The HMAC is SHA-256 of "TIMESTAMP.BODY" using the Signing Secret.
@@ -221,42 +226,34 @@ async function setOrderTypePickup(
   }
 }
 
-/** Links a line item to its inventory item in Clover (enables printer labels). */
-async function linkLineItemToInventory(
-  apiToken: string,
-  merchantId: string,
-  orderId: string,
-  lineItemId: string,
-  inventoryItemId: string,
-  itemName: string
-) {
-  try {
-    const res = await fetch(
-      `${CLOVER_API_URL}/v3/merchants/${merchantId}/orders/${orderId}/line_items/${lineItemId}`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ item: { id: inventoryItemId } }),
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Clover fetch with retry on 429/5xx. Clover throttles rapid successive
+ * calls (especially writes to the same resource), which used to silently
+ * kill stock decrements. 3 attempts: immediate, +600ms, +1800ms.
+ */
+async function cloverFetchWithRetry(
+  url: string,
+  init: RequestInit,
+  label: string
+): Promise<Response | null> {
+  const delays = [0, 600, 1800];
+  for (let attempt = 0; attempt < delays.length; attempt++) {
+    if (delays[attempt] > 0) await sleep(delays[attempt]);
+    try {
+      const res = await fetch(url, init);
+      if (res.status === 429 || res.status >= 500) {
+        console.warn(`[Clover] ${label}: HTTP ${res.status} (attempt ${attempt + 1}/${delays.length})`);
+        continue;
       }
-    );
-    if (res.ok) {
-      console.log(
-        `[Webhook] linked "${itemName}" -> inventory ${inventoryItemId}`
-      );
-    } else {
-      const errText = await res.text();
-      console.error(
-        `[Webhook] link failed for ${itemName}:`,
-        res.status,
-        errText
-      );
+      return res;
+    } catch (err) {
+      console.error(`[Clover] ${label}: network error (attempt ${attempt + 1})`, err);
     }
-  } catch (err) {
-    console.error(`[Webhook] link error for ${itemName}:`, err);
   }
+  console.error(`[Clover] ${label}: failed after all retries`);
+  return null;
 }
 
 export async function POST(request: NextRequest) {
@@ -431,6 +428,10 @@ export async function POST(request: NextRequest) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(n8nPayload),
+          // Hard cap: a slow/cold n8n must not eat the time budget that the
+          // stock decrement below needs. n8n queues the email on receipt,
+          // so even a timeout here usually still delivers the email.
+          signal: AbortSignal.timeout(8000),
         }
       );
       console.log(`[Webhook] n8n response: ${n8nRes.status}`);
@@ -439,9 +440,15 @@ export async function POST(request: NextRequest) {
       console.error("[Webhook] n8n notification error:", err);
     }
 
-    // For each line item: find matching product, link to inventory, decrement stock
-    let linked = 0;
-    let decremented = 0;
+    // ---- STOCK DECREMENT (batched per Clover item) ----
+    // The old version did read+write per LINE ITEM. Orders often carry the
+    // same product as multiple line items (e.g. 3x "Plain Croissant" = 3
+    // separate line items), and Clover deterministically rejects rapid
+    // successive writes to the same item_stock — so only the first write
+    // survived and the rest were silently lost (bug found 2026-07-11).
+    // Now: aggregate quantities per item first → exactly ONE read and ONE
+    // write per distinct product, each with retry.
+    const qtyByItem = new Map<string, { qty: number; name: string }>();
     for (const li of lineItems) {
       const product = products.find((p) => p.name === li.name);
       if (!product) {
@@ -453,87 +460,84 @@ export async function POST(request: NextRequest) {
         console.log(`[Webhook] no cloverItemId for ${product.slug}, skipping`);
         continue;
       }
-
-      // Link line item to inventory item
-      if (li.id) {
-        await linkLineItemToInventory(
-          apiToken,
-          merchantId,
-          orderId,
-          li.id,
-          cloverItemId,
-          li.name
-        );
-        linked++;
-      }
-
-      // Decrement stock — only here in the webhook (after payment APPROVED)
-      // This prevents phantom decrements from failed/abandoned checkouts
-      // NOTE: Clover stores unitQty multiplied by 1000 (like price in cents)
-      // So unitQty=1000 means quantity 1, unitQty=2000 means quantity 2, etc.
+      // Clover stores unitQty multiplied by 1000 (like price in cents)
       const rawQty = li.unitQty || 1000;
       const qty = rawQty >= 1000 ? Math.round(rawQty / 1000) : rawQty;
-      try {
-        const stockRes = await fetch(
-          `${CLOVER_API_URL}/v3/merchants/${merchantId}/item_stocks/${cloverItemId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${apiToken}`,
-              "Content-Type": "application/json",
-            },
-            cache: "no-store",
-          }
-        );
-        if (!stockRes.ok) {
-          console.error(`[Stock] read failed for ${li.name}: ${stockRes.status}`);
-          continue;
-        }
-        const stockData = await stockRes.json();
-        const current =
-          typeof stockData.stockCount === "number"
-            ? stockData.stockCount
-            : typeof stockData.quantity === "number"
-            ? Math.floor(stockData.quantity)
-            : null;
+      const prev = qtyByItem.get(cloverItemId);
+      qtyByItem.set(cloverItemId, {
+        qty: (prev?.qty || 0) + qty,
+        name: li.name,
+      });
+    }
 
-        if (current === null) {
-          console.log(`[Stock] ${li.name}: no stock tracking, skipping`);
-          continue;
-        }
+    let decremented = 0;
+    let first = true;
+    for (const [cloverItemId, { qty, name }] of qtyByItem) {
+      // Small gap between distinct items to stay under Clover's rate limits
+      if (!first) await sleep(300);
+      first = false;
 
-        const newCount = Math.max(0, current - qty);
-        const updateRes = await fetch(
-          `${CLOVER_API_URL}/v3/merchants/${merchantId}/item_stocks/${cloverItemId}`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${apiToken}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ stockCount: newCount, quantity: newCount }),
-          }
-        );
-        if (updateRes.ok) {
-          console.log(`[Stock] ${li.name}: ${current} → ${newCount} (-${qty})`);
-          decremented++;
-        } else {
-          const errText = await updateRes.text();
-          console.error(`[Stock] decrement failed for ${li.name}:`, updateRes.status, errText);
-        }
-      } catch (err) {
-        console.error(`[Stock] decrement error for ${li.name}:`, err);
+      const authHeaders = {
+        Authorization: `Bearer ${apiToken}`,
+        "Content-Type": "application/json",
+      };
+      const stockUrl = `${CLOVER_API_URL}/v3/merchants/${merchantId}/item_stocks/${cloverItemId}`;
+
+      const stockRes = await cloverFetchWithRetry(
+        stockUrl,
+        { headers: authHeaders, cache: "no-store" },
+        `stock read ${name}`
+      );
+      if (!stockRes || !stockRes.ok) {
+        console.error(`[Stock] read failed for ${name}: ${stockRes?.status ?? "no response"}`);
+        continue;
+      }
+      const stockData = await stockRes.json();
+      const current =
+        typeof stockData.stockCount === "number"
+          ? stockData.stockCount
+          : typeof stockData.quantity === "number"
+          ? Math.floor(stockData.quantity)
+          : null;
+
+      if (current === null) {
+        console.log(`[Stock] ${name}: no stock tracking, skipping`);
+        continue;
+      }
+
+      const newCount = Math.max(0, current - qty);
+      const updateRes = await cloverFetchWithRetry(
+        stockUrl,
+        {
+          method: "POST",
+          headers: authHeaders,
+          body: JSON.stringify({ stockCount: newCount, quantity: newCount }),
+        },
+        `stock write ${name}`
+      );
+      if (updateRes && updateRes.ok) {
+        console.log(`[Stock] ${name}: ${current} → ${newCount} (-${qty})`);
+        decremented++;
+      } else {
+        const errText = updateRes ? await updateRes.text() : "no response";
+        console.error(`[Stock] decrement failed for ${name}:`, updateRes?.status, errText);
       }
     }
 
-    // Set order type to "Pickup" — shows on POS + may trigger printer labels.
+    // Set order type to "Pickup" — shows on POS.
     // Runs last: it's the slowest, most rate-limited step (Clover 429s on
-    // order_types), and the email notification above must not depend on it.
+    // order_types), and email + stock must not depend on it.
     const pickupSet = await setOrderTypePickup(apiToken, merchantId!, orderId);
 
     console.log(
-      `[Webhook] done — linked ${linked}/${lineItems.length} items, decremented ${decremented}, pickup=${pickupSet}`
+      `[Webhook] done — decremented ${decremented}/${qtyByItem.size} distinct items, pickup=${pickupSet}`
     );
-    return NextResponse.json({ ok: true, linked, decremented, pickup: pickupSet });
+    return NextResponse.json({
+      ok: true,
+      decremented,
+      distinctItems: qtyByItem.size,
+      pickup: pickupSet,
+    });
   } catch (err) {
     console.error("[Webhook] unexpected error:", err);
     return NextResponse.json({ ok: true, error: "internal" });
