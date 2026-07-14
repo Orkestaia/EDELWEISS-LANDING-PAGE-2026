@@ -69,9 +69,9 @@ function ShowcaseHeader() {
           Add what you love to your order and pick it up fresh.
         </p>
         <p className="mt-3 text-sm leading-relaxed text-cocoa/55">
-          Stock updates in real time. Our counter and this website share the
-          same count — when something sells in the bakery, it comes off the
-          online total too. What you see is what we have.
+          Stock updates in real time, but online only shows a portion of each
+          morning's bake. If something reads as sold out, we likely still
+          have more at the counter — come see us.
         </p>
       </Reveal>
     </div>

@@ -20,7 +20,7 @@ const items: Item[] = [
     title: "How availability works",
     short: "Live · Updated in real time",
     body:
-      "We bake a set amount every morning and that count is shared between our counter and this website. When a croissant sells in the bakery, it comes off the online total too — automatically. If an item shows 'Only 2 left,' that is what we truly have. If it's gone, you'll see 'Sold out today.' Come back tomorrow — we'll bake more.",
+      "We bake a full batch every morning, but only set aside a portion of it for online orders — that way a website order and a walk-in customer are never racing for the same last croissant. If an item shows 'Only 2 left,' that's exactly what remains in the online batch. If it shows 'Sold out today,' don't rule us out — we almost always have more behind the counter. Stop by and ask; you may find just what you were craving.",
   },
   {
     icon: <Clock className="h-5 w-5" />,
@@ -53,7 +53,7 @@ const items: Item[] = [
 ];
 
 const quickRef = [
-  ["Availability", "Live stock — shared between bakery & website"],
+  ["Availability", "Live, but online is only a portion of the bake — visit us if it's sold out"],
   ["Pick-Up Time", "Hourly slots — note specific times in Special Instructions"],
   ["Bulk Orders", "Online caps apply · Call us to bypass"],
   ["Loyalty Points", "Earned & redeemed in-person at the counter"],

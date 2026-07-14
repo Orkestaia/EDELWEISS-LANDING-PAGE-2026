@@ -13,7 +13,7 @@ const steps = [
   {
     icon: <RefreshCw size={15} />,
     title: "Stock updates live",
-    body: "We bake a set amount each morning. That count is shared between our counter and this website — when something sells in the bakery, it comes off the online total too. If an item is gone, it's truly gone for today.",
+    body: "We bake a set amount each morning and set a portion of it aside for online orders. If something shows as sold out here, stop by anyway — we often still have more waiting at the counter.",
   },
   {
     icon: <ShoppingBag size={15} />,
