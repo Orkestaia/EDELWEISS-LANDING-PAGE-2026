@@ -182,9 +182,19 @@ async function getPickupOrderTypeId(
   return null;
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 /**
  * Sets the order type to "Pickup" so it appears correctly on the POS
  * and may trigger printer labels configured for that order type.
+ *
+ * This used a bare `fetch` with no retry until 2026-07-22. Root-caused a
+ * ~50% silent failure rate on real orders (confirmed via Clover API: 6 of
+ * 12 paid online orders since Jul 15 never got orderType set) — Clover
+ * intermittently 429s this call after the preceding payment/order/stock
+ * calls have already used up the merchant's rate-limit budget, and since
+ * the webhook always returns 200 regardless, Clover never retries.
+ * Now uses the same cloverFetchWithRetry used for stock decrement.
  */
 async function setOrderTypePickup(
   apiToken: string,
@@ -194,39 +204,27 @@ async function setOrderTypePickup(
   const pickupTypeId = await getPickupOrderTypeId(apiToken, merchantId);
   if (!pickupTypeId) return false;
 
-  try {
-    const res = await fetch(
-      `${CLOVER_API_URL}/v3/merchants/${merchantId}/orders/${orderId}`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ orderType: { id: pickupTypeId } }),
-      }
-    );
-    if (res.ok) {
-      console.log(
-        `[Webhook] order ${orderId} set to Pickup type (${pickupTypeId})`
-      );
-      return true;
-    } else {
-      const errText = await res.text();
-      console.error(
-        `[Webhook] setOrderType failed:`,
-        res.status,
-        errText
-      );
-      return false;
-    }
-  } catch (err) {
-    console.error("[Webhook] setOrderType error:", err);
-    return false;
-  }
-}
+  const res = await cloverFetchWithRetry(
+    `${CLOVER_API_URL}/v3/merchants/${merchantId}/orders/${orderId}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ orderType: { id: pickupTypeId } }),
+    },
+    `setOrderType ${orderId}`
+  );
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  if (res && res.ok) {
+    console.log(`[Webhook] order ${orderId} set to Pickup type (${pickupTypeId})`);
+    return true;
+  }
+  const errText = res ? await res.text() : "no response after retries";
+  console.error(`[Webhook] setOrderType failed:`, res?.status, errText);
+  return false;
+}
 
 /**
  * Clover fetch with retry on 429/5xx. Clover throttles rapid successive
