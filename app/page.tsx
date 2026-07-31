@@ -11,6 +11,7 @@ import { Visit } from "@/components/Visit";
 import { Newsletter } from "@/components/Newsletter";
 import { Footer } from "@/components/Footer";
 import { NewsletterModal } from "@/components/NewsletterModal";
+import { SignupPopup } from "@/components/SignupPopup";
 import { HolidayNotice } from "@/components/HolidayNotice";
 
 export default function Home() {
@@ -19,6 +20,7 @@ export default function Home() {
       <Navbar />
       <Hero />
       <Showcase />
+      <Newsletter />
       <DrinkBanner />
       <AlpineHeritage />
       <About />
@@ -26,9 +28,9 @@ export default function Home() {
       <Reviews />
       <OrderingGuide />
       <Visit />
-      <Newsletter />
       <Footer />
       <NewsletterModal />
+      <SignupPopup />
       <HolidayNotice />
     </main>
   );
