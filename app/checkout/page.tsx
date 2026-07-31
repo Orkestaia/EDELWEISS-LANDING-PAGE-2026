@@ -34,9 +34,13 @@ function buildPickupDates() {
 }
 
 const JULY4_DATE = "2026-07-04";
+// Aug 4 & 11, 2026 (two Tuesdays): short-staffed, open at 8am instead of 7am.
+const OPEN_8AM_DATES = new Set(["2026-08-04", "2026-08-11"]);
 
 function slotsForDate(dateValue: string, weekday: number) {
-  const start = weekday === 0 || weekday === 6 ? 8 : 7;
+  let start = weekday === 0 || weekday === 6 ? 8 : 7;
+  // These dates open at 8am, so drop the 7am pick-up slot.
+  if (OPEN_8AM_DATES.has(dateValue)) start = 8;
   // July 4th closes at noon — last slot is 11:00 (pickup by 12pm).
   const end = dateValue === JULY4_DATE ? 11 : 13;
   const slots: string[] = [];
@@ -272,6 +276,11 @@ export default function CheckoutPage() {
               {pickupDate === JULY4_DATE && (
                 <div className="rounded-xl border border-mustard/40 bg-mustard/10 px-4 py-3 text-sm text-cocoa">
                   🎆 <strong>July 4th special hours:</strong> we close at noon. Last pick-up slot is 11:00 AM.
+                </div>
+              )}
+              {OPEN_8AM_DATES.has(pickupDate) && (
+                <div className="rounded-xl border border-mustard/40 bg-mustard/10 px-4 py-3 text-sm text-cocoa">
+                  ⏰ <strong>Special hours:</strong> we open at 8 AM on this date, so the earliest pick-up is 8:00 AM.
                 </div>
               )}
               <p className="flex items-center gap-2 text-xs text-cocoa/55">

@@ -113,6 +113,17 @@ function validate(body: any): { valid: boolean; error?: string } {
         "We close at noon on July 4th. Please select a pick-up time of 11:00 AM or earlier.",
     };
   }
+  // Aug 4 & 11, 2026: short-staffed, open at 8am. No 7:00 pick-up those days.
+  if (
+    (body.pickupDate === "2026-08-04" || body.pickupDate === "2026-08-11") &&
+    body.pickupSlot < "08:00"
+  ) {
+    return {
+      valid: false,
+      error:
+        "We open at 8:00 AM on this date. Please select a pick-up time of 8:00 AM or later.",
+    };
+  }
   // No permitir fechas pasadas (comparación de cadenas YYYY-MM-DD).
   const todayStr = new Date().toISOString().slice(0, 10);
   if (body.pickupDate < todayStr) {

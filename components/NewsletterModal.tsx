@@ -6,8 +6,19 @@ import { X, ShoppingBag, Clock, Calendar, MapPin, RefreshCw } from "lucide-react
 import Link from "next/link";
 import { EdelweissMark } from "./EdelweissMark";
 
-const STORAGE_KEY = "edelweiss_intro_modal_v2";
+// Bumped v2 → v3 so the special-hours notice below is shown once to every
+// visitor (including those who already dismissed the previous version).
+const STORAGE_KEY = "edelweiss_intro_modal_v3";
 const DELAY_MS = 4500;
+
+// Aug 4 & 11, 2026 (two Tuesdays): open at 8am instead of 7am, short-staffed.
+function isAugustSpecialWindow() {
+  const now = new Date();
+  return (
+    now >= new Date("2026-07-28T00:00:00") &&
+    now <= new Date("2026-08-11T23:59:59")
+  );
+}
 
 const steps = [
   {
@@ -110,6 +121,21 @@ export function NewsletterModal() {
             </button>
 
             <div className="relative overflow-y-auto p-6 sm:p-8">
+              {/* Special-hours notice (auto-hides after Aug 11) */}
+              {isAugustSpecialWindow() && (
+                <div className="mb-5 rounded-xl border border-mustard/50 bg-mustard/10 px-4 py-3">
+                  <p className="text-[0.6rem] uppercase tracking-[0.28em] text-mustard font-semibold mb-1">
+                    ⏰ Special hours
+                  </p>
+                  <p className="text-[0.82rem] text-cocoa leading-snug">
+                    On <strong>Tue Aug 4</strong> &amp; <strong>Tue Aug 11</strong>{" "}
+                    we open at <strong>8 AM</strong> (not 7 AM) — online pick-ups
+                    start at 8 AM too. We&apos;re short-staffed for two weeks;
+                    thanks for your patience!
+                  </p>
+                </div>
+              )}
+
               {/* Header */}
               <div className="flex items-center gap-3 text-forest">
                 <EdelweissMark size={28} />

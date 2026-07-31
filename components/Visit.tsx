@@ -21,6 +21,15 @@ function isJuly4Week() {
   return now >= from && now <= until;
 }
 
+// Aug 4 & 11, 2026 (two Tuesdays): open at 8am instead of 7am, short-staffed.
+// Notice shows from late July until the last affected day, then auto-hides.
+function isAugustSpecialWindow() {
+  const now = new Date();
+  const from = new Date("2026-07-28T00:00:00");
+  const until = new Date("2026-08-11T23:59:59");
+  return now >= from && now <= until;
+}
+
 export function Visit() {
   return (
     <section id="visit" className="relative isolate bg-cream-100 paper overflow-hidden">
@@ -130,6 +139,20 @@ export function Visit() {
                   <p className="text-sm text-cocoa">
                     This Saturday we open <strong>8am – 12pm only.</strong>{" "}
                     Happy Independence Day!
+                  </p>
+                </div>
+              )}
+              {isAugustSpecialWindow() && (
+                <div className="mb-5 rounded-xl border border-mustard/50 bg-mustard/10 px-4 py-3">
+                  <p className="text-xs uppercase tracking-[0.2em] text-mustard font-semibold mb-0.5">
+                    ⏰ Special hours
+                  </p>
+                  <p className="text-sm text-cocoa">
+                    On <strong>Tuesday, Aug 4</strong> and{" "}
+                    <strong>Tuesday, Aug 11</strong> we open at{" "}
+                    <strong>8 AM</strong> (instead of 7 AM) — online pick-ups
+                    start at 8 AM too. We&apos;re short-staffed for two weeks;
+                    thank you for your patience.
                   </p>
                 </div>
               )}
