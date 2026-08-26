@@ -399,12 +399,32 @@ export async function POST(request: NextRequest) {
         ? pickupRaw.split(" at ")
         : [pickupRaw, ""];
 
+      // Weekday-first, UPPERCASE pickup date for the notification email.
+      // Valentina asked for the day of the week up front so a future pre-order
+      // is never mistaken for a same-day one (e.g. "SATURDAY · August 22, 2026").
+      // Computed here (not in n8n) so the email template needs no change.
+      let pickupDateLabel = pickupDate.trim();
+      const dmatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(pickupDate.trim());
+      if (dmatch) {
+        const d = new Date(Date.UTC(+dmatch[1], +dmatch[2] - 1, +dmatch[3], 12));
+        const weekday = d
+          .toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" })
+          .toUpperCase();
+        const pretty = d.toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+          timeZone: "UTC",
+        });
+        pickupDateLabel = `${weekday} · ${pretty}`;
+      }
+
       const n8nPayload = {
         orderId,
         customerName: noteFields["Customer"] || "Online Customer",
         customerEmail: noteFields["Email"] || "",
         customerPhone: noteFields["Phone"] || "",
-        pickupDate: pickupDate.trim(),
+        pickupDate: pickupDateLabel,
         pickupTime: pickupTime.trim(),
         notes: noteFields["Notes"] || "",
         items: lineItems.map((li: any) => ({
