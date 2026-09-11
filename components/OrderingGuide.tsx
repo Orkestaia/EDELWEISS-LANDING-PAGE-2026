@@ -25,7 +25,7 @@ const items: Item[] = [
   {
     icon: <Clock className="h-5 w-5" />,
     title: "Scheduling your pick-up",
-    short: "Every hour · Tue – Sun",
+    short: "Every hour · Every day",
     body:
       "Our system assigns pick-ups in 1-hour increments. Need a specific time inside that window? Drop it into the Special Instructions field at checkout and we will hold it for you.",
   },

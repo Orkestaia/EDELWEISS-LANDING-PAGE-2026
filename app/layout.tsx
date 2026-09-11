@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     template: "%s · Edelweiss Pastry Shop",
   },
   description:
-    "Edelweiss Pastry Shop — a Swiss-inspired bakery on Alfred Street in downtown Biddeford, Maine. Hand-laminated croissants, slow-fermented breads, Swiss pastries and small-batch chocolates, baked daily. Order online for in-store pick-up Tuesday through Sunday.",
+    "Edelweiss Pastry Shop — a Swiss-inspired bakery on Alfred Street in downtown Biddeford, Maine. Hand-laminated croissants, slow-fermented breads, Swiss pastries and small-batch chocolates, baked daily. Order online for in-store pick-up seven days a week.",
   keywords: [
     // Local SEO (Biddeford-first)
     "bakery Biddeford",
@@ -105,7 +105,7 @@ const localBusinessJsonLd = {
   openingHoursSpecification: [
     {
       "@type": "OpeningHoursSpecification",
-      dayOfWeek: ["Tuesday", "Wednesday", "Thursday", "Friday"],
+      dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
       opens: "07:00",
       closes: "14:00",
     },

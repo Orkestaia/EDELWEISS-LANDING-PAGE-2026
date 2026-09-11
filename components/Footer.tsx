@@ -64,7 +64,7 @@ export function Footer() {
               Biddeford, ME 04005
             </a>
             <br />
-            <span className="text-cream-50/55">Tue – Sun · Closed Mondays</span>
+            <span className="text-cream-50/55">Open daily · 7am – 2pm</span>
           </address>
         </div>
 

@@ -11,14 +11,13 @@ import { trackBeginCheckout } from "@/lib/analytics";
 
 type Status = "idle" | "submitting" | "error";
 
-/** Genera las próximas ~14 fechas válidas (sin lunes). */
+/** Genera las próximas 14 fechas (abrimos los 7 días desde el 14/09/2026). */
 function buildPickupDates() {
   const out: { value: string; label: string; weekday: number }[] = [];
   const today = new Date();
   for (let i = 0; i < 24 && out.length < 14; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
-    if (d.getDay() === 1) continue; // lunes cerrado
     const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
       2,
       "0"
@@ -284,8 +283,8 @@ export default function CheckoutPage() {
                 </div>
               )}
               <p className="flex items-center gap-2 text-xs text-cocoa/55">
-                <Clock size={13} /> Pick-up Tuesday–Sunday, 7am–2pm. Closed
-                Mondays.
+                <Clock size={13} /> Pick-up every day, 7am–2pm (weekends from
+                8am).
               </p>
             </fieldset>
 

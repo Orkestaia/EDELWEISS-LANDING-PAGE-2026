@@ -138,7 +138,7 @@ export function CartDrawer() {
                   </span>
                 </div>
                 <p className="text-xs leading-relaxed text-cocoa/55">
-                  Pick-up only · Tuesday–Sunday, 7am–2pm. You&apos;ll choose your
+                  Pick-up only · Every day, 7am–2pm. You&apos;ll choose your
                   pick-up time at checkout.
                 </p>
                 <Link

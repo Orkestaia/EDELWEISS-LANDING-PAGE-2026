@@ -80,7 +80,7 @@ export default function ChocolatesPage() {
                 and what Alex is tempering this morning.
               </p>
               <p className="mt-4 text-cream-50/65 text-sm">
-                Visit us Tuesday through Sunday, 7am – 2pm.{" "}
+                Visit us every day, 7am – 2pm.{" "}
                 <Link
                   href="/#visit"
                   className="underline underline-offset-4 hover:text-mustard transition-colors"

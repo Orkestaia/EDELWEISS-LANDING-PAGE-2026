@@ -27,7 +27,7 @@ export default function MenuPage() {
             <span className="block italic text-forest">with prices.</span>
           </>
         }
-        description="Available in store and online for pick-up Tuesday through Sunday. Some items rotate seasonally — call us at 207 770-6945 to check availability or to place a large order."
+        description="Available in store and online for pick-up seven days a week. Some items rotate seasonally — call us at 207 770-6945 to check availability or to place a large order."
       />
 
       <section className="relative bg-cream-50 pb-24 sm:pb-32">

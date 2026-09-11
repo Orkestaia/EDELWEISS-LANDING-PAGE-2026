@@ -97,13 +97,11 @@ function validate(body: any): { valid: boolean; error?: string } {
   if (!ALLOWED_SLOTS.includes(body.pickupSlot)) {
     return { valid: false, error: "That pick-up time is not available." };
   }
-  // Día de la semana de forma segura (mediodía UTC evita líos de DST).
+  // Mediodía UTC evita líos de DST al parsear la fecha.
+  // Abrimos los 7 días desde el 14/09/2026, así que no hay día cerrado que validar.
   const d = new Date(`${body.pickupDate}T12:00:00Z`);
   if (isNaN(d.getTime())) {
     return { valid: false, error: "Invalid pick-up date." };
-  }
-  if (d.getUTCDay() === 1) {
-    return { valid: false, error: "We are closed on Mondays." };
   }
   // July 4th 2026: special hours 8am–12pm. Last pick-up slot is 11:00.
   if (body.pickupDate === "2026-07-04" && body.pickupSlot > "11:00") {

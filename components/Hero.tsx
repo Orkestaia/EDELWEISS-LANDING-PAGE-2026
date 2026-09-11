@@ -209,7 +209,7 @@ export function Hero() {
                   Pick-up
                 </dt>
                 <dd className="font-display text-2xl sm:text-3xl text-forest mt-1">
-                  Tue – Sun
+                  Every day
                 </dd>
               </div>
               <div className="pl-3">

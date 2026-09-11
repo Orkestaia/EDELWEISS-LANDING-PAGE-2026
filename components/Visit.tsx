@@ -5,7 +5,7 @@ import { Reveal } from "./Reveal";
 import { AlpineSilhouette } from "./AlpineBackground";
 
 const hours = [
-  ["Monday", "Closed"],
+  ["Monday", "7am – 2pm"],
   ["Tuesday", "7am – 2pm"],
   ["Wednesday", "7am – 2pm"],
   ["Thursday", "7am – 2pm"],
@@ -28,6 +28,17 @@ function isAugustSpecialWindow() {
   const from = new Date("2026-07-28T00:00:00");
   const until = new Date("2026-08-11T23:59:59");
   return now >= from && now <= until;
+}
+
+// From Mon Sep 14, 2026 the bakery opens 7 days a week (Mondays were closed
+// before). Highlight the change for a few weeks, then let it fade to normal.
+const MONDAY_OPENING_DATE = new Date("2026-09-14T00:00:00");
+function isMondayNewsWindow() {
+  const now = new Date();
+  return (
+    now >= new Date("2026-09-11T00:00:00") &&
+    now <= new Date("2026-10-05T23:59:59")
+  );
 }
 
 export function Visit() {
@@ -142,6 +153,27 @@ export function Visit() {
                   </p>
                 </div>
               )}
+              {isMondayNewsWindow() && (
+                <div className="mt-5 rounded-xl border border-forest/40 bg-forest/10 px-4 py-3">
+                  <p className="text-xs uppercase tracking-[0.2em] text-forest font-semibold mb-0.5">
+                    ✨ New — open Mondays
+                  </p>
+                  <p className="text-sm text-cocoa">
+                    {new Date() < MONDAY_OPENING_DATE ? (
+                      <>
+                        From <strong>Monday, September 14</strong> we are open
+                        seven days a week — Mondays included,{" "}
+                        <strong>7am – 2pm</strong>.
+                      </>
+                    ) : (
+                      <>
+                        We are now open <strong>seven days a week</strong> —
+                        Mondays included, <strong>7am – 2pm</strong>.
+                      </>
+                    )}
+                  </p>
+                </div>
+              )}
               {isAugustSpecialWindow() && (
                 <div className="mb-5 rounded-xl border border-mustard/50 bg-mustard/10 px-4 py-3">
                   <p className="text-xs uppercase tracking-[0.2em] text-mustard font-semibold mb-0.5">
@@ -159,6 +191,7 @@ export function Visit() {
               <dl className="mt-6 divide-y divide-cocoa/10">
                 {hours.map(([d, t]) => {
                   const isSatJuly4 = d === "Saturday" && isJuly4Week();
+                  const isNewMonday = d === "Monday" && isMondayNewsWindow();
                   return (
                     <div
                       key={d}
@@ -167,18 +200,24 @@ export function Visit() {
                       <dt className="font-display text-xl text-cocoa">{d}</dt>
                       <dd
                         className={`text-right text-sm tracking-[0.18em] uppercase ${
-                          t === "Closed" ? "text-rust" : isSatJuly4 ? "text-mustard font-semibold" : "text-cocoa/75"
+                          t === "Closed"
+                            ? "text-rust"
+                            : isSatJuly4
+                            ? "text-mustard font-semibold"
+                            : isNewMonday
+                            ? "text-forest font-semibold"
+                            : "text-cocoa/75"
                         }`}
                       >
-                        {isSatJuly4 ? "8am – 12pm ★" : t}
+                        {isSatJuly4 ? "8am – 12pm ★" : isNewMonday ? `${t} ✨` : t}
                       </dd>
                     </div>
                   );
                 })}
               </dl>
               <p className="mt-6 text-sm text-cocoa/60">
-                Closed Mondays. Hours may shift slightly around holidays — keep
-                an eye on our Instagram for special bakes.
+                Open seven days a week. Hours may shift slightly around holidays
+                — keep an eye on our Instagram for special bakes.
               </p>
             </div>
           </Reveal>

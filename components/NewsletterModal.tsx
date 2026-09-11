@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { X, ShoppingBag, Clock, Calendar, MapPin, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { EdelweissMark } from "./EdelweissMark";
+import { isMondayNoticePending } from "./MondayNotice";
 
 // Bumped v2 → v3 so the special-hours notice below is shown once to every
 // visitor (including those who already dismissed the previous version).
@@ -34,7 +35,7 @@ const steps = [
   {
     icon: <Clock size={15} />,
     title: "Choose your pick-up time",
-    body: "Hourly slots, Tuesday through Sunday, 7 am – 2 pm.",
+    body: "Hourly slots, every day of the week, 7 am – 2 pm.",
   },
   {
     icon: <Calendar size={15} />,
@@ -61,6 +62,9 @@ export function NewsletterModal() {
     if (typeof window === "undefined") return;
     const seen = window.localStorage.getItem(STORAGE_KEY);
     if (seen) return;
+    // The Monday-opening announcement takes the first slot while it is running;
+    // this intro comes back on the visitor's next page load.
+    if (isMondayNoticePending()) return;
     const timer = window.setTimeout(() => setOpen(true), DELAY_MS);
     return () => window.clearTimeout(timer);
   }, []);
@@ -194,7 +198,8 @@ export function NewsletterModal() {
                 </Link>
               </div>
               <p className="mt-4 text-[0.68rem] text-cocoa/50 leading-relaxed">
-                Pick-up only · Tue–Sun, 7 am – 2 pm · 5 Alfred Street, Biddeford
+                Pick-up only · Every day, 7 am – 2 pm · 5 Alfred Street,
+                Biddeford
               </p>
             </div>
           </motion.div>
