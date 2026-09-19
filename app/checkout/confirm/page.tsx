@@ -15,8 +15,6 @@ interface OrderData {
   email: string;
   pickupDate: string;
   pickupSlot: string;
-  subtotal?: number;
-  tax?: number;
   total: number;
 }
 
@@ -60,8 +58,7 @@ function ConfirmContent() {
         setOrder(parsed);
         sessionStorage.removeItem("edelweiss_order");
         if (searchParams.get("cancelled") !== "true") {
-          // Revenue for analytics excludes sales tax (consistent with pre-tax history).
-          trackPurchase(orderId || "unknown", parsed.subtotal ?? parsed.total);
+          trackPurchase(orderId || "unknown", parsed.total);
         }
       } catch {}
     }
@@ -135,12 +132,6 @@ function ConfirmContent() {
             <>
               <Row label="Pick-up" value={prettyDate(order.pickupDate)} />
               <Row label="Time" value={slotLabel(order.pickupSlot)} />
-              {typeof order.subtotal === "number" && typeof order.tax === "number" && (
-                <>
-                  <Row label="Subtotal" value={formatPrice(order.subtotal)} />
-                  <Row label="Tax" value={formatPrice(order.tax)} />
-                </>
-              )}
               <Row label="Total" value={formatPrice(order.total)} strong />
             </>
           )}

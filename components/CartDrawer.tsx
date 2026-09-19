@@ -5,11 +5,10 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { Minus, Plus, X, ShoppingBag } from "lucide-react";
 import { useCart, formatPrice } from "@/lib/cart";
-import { cartTotals, SALES_TAX_PERCENT } from "@/lib/tax";
 
 export function CartDrawer() {
-  const { items, isOpen, close, count, setQuantity, removeItem } = useCart();
-  const totals = cartTotals(items);
+  const { items, isOpen, close, total, count, setQuantity, removeItem } =
+    useCart();
 
   return (
     <AnimatePresence>
@@ -130,23 +129,13 @@ export function CartDrawer() {
             {/* Footer / checkout */}
             {items.length > 0 && (
               <div className="border-t border-cocoa/10 px-6 py-5 space-y-4">
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-sm text-cocoa/70">
-                    <span>Subtotal</span>
-                    <span className="tabular-nums">{formatPrice(totals.subtotalCents / 100)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm text-cocoa/70">
-                    <span>Tax ({SALES_TAX_PERCENT}%)</span>
-                    <span className="tabular-nums">{formatPrice(totals.taxCents / 100)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-cocoa pt-1.5">
-                    <span className="text-sm uppercase tracking-[0.2em] text-cocoa/60">
-                      Total
-                    </span>
-                    <span className="font-display text-2xl tabular-nums">
-                      {formatPrice(totals.totalCents / 100)}
-                    </span>
-                  </div>
+                <div className="flex items-center justify-between text-cocoa">
+                  <span className="text-sm uppercase tracking-[0.2em] text-cocoa/60">
+                    Subtotal
+                  </span>
+                  <span className="font-display text-2xl tabular-nums">
+                    {formatPrice(total)}
+                  </span>
                 </div>
                 <p className="text-xs leading-relaxed text-cocoa/55">
                   Pick-up only · Every day, 7am–2pm. You&apos;ll choose your

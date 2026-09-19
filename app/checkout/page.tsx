@@ -8,7 +8,6 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { useCart, formatPrice } from "@/lib/cart";
 import { trackBeginCheckout } from "@/lib/analytics";
-import { cartTotals, SALES_TAX_PERCENT } from "@/lib/tax";
 
 type Status = "idle" | "submitting" | "error";
 
@@ -66,7 +65,6 @@ function prettyDate(value: string) {
 
 export default function CheckoutPage() {
   const { items, total, count, hydrated, clear } = useCart();
-  const totals = cartTotals(items);
   const dates = useMemo(buildPickupDates, []);
 
   const [name, setName] = useState("");
@@ -118,8 +116,6 @@ export default function CheckoutPage() {
           email: email.trim(),
           pickupDate,
           pickupSlot,
-          subtotal: data.subtotal,
-          tax: data.tax,
           total: data.total,
         })
       );
@@ -308,7 +304,7 @@ export default function CheckoutPage() {
                   <Loader2 size={16} className="animate-spin" /> Placing order…
                 </>
               ) : (
-                <>Pay online · {formatPrice(totals.totalCents / 100)}</>
+                <>Pay online · {formatPrice(total)}</>
               )}
             </button>
           </form>
@@ -343,23 +339,13 @@ export default function CheckoutPage() {
                   </li>
                 ))}
               </ul>
-              <div className="mt-6 pt-5 border-t border-cocoa/10 space-y-1.5">
-                <div className="flex items-center justify-between text-sm text-cocoa/70">
-                  <span>Subtotal</span>
-                  <span className="tabular-nums">{formatPrice(totals.subtotalCents / 100)}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm text-cocoa/70">
-                  <span>Tax ({SALES_TAX_PERCENT}%)</span>
-                  <span className="tabular-nums">{formatPrice(totals.taxCents / 100)}</span>
-                </div>
-                <div className="flex items-center justify-between pt-1.5">
-                  <span className="text-sm uppercase tracking-[0.2em] text-cocoa/60">
-                    Total
-                  </span>
-                  <span className="font-display text-2xl text-cocoa tabular-nums">
-                    {formatPrice(totals.totalCents / 100)}
-                  </span>
-                </div>
+              <div className="mt-6 pt-5 border-t border-cocoa/10 flex items-center justify-between">
+                <span className="text-sm uppercase tracking-[0.2em] text-cocoa/60">
+                  Total
+                </span>
+                <span className="font-display text-2xl text-cocoa tabular-nums">
+                  {formatPrice(total)}
+                </span>
               </div>
               <p className="mt-4 text-xs text-cocoa/55 leading-relaxed">
                 Secure card payment on the next step via Clover. Your order
