@@ -23,6 +23,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { products, effectiveCloverItemId } from "@/lib/products";
+import { SALES_TAX, cartTotals, toCents } from "@/lib/tax";
 
 const isSandbox = process.env.NEXT_PUBLIC_ENV === "sandbox";
 const CLOVER_API_URL = isSandbox
@@ -221,7 +222,7 @@ export async function POST(request: NextRequest) {
   try {
     // Una única orden: la crea automáticamente Clover Hosted Checkout al pagar.
     // Toda la info de pickup va como "note" para que aparezca en el POS junto al pago.
-    const total = items.reduce((s, it) => s + it.price * it.quantity, 0);
+    const { subtotalCents, taxCents, totalCents } = cartTotals(items);
     const origin = request.nextUrl.origin;
     const firstName = customer.name.split(" ")[0];
     const lastName = customer.name.split(" ").slice(1).join(" ") || firstName;
@@ -248,8 +249,9 @@ export async function POST(request: NextRequest) {
         lineItems: itemsWithIds.map((it) => ({
           name: it.name,
           unitQty: it.quantity,
-          price: Math.round(it.price * 100),
+          price: toCents(it.price),
           note: pickupNote,
+          taxRates: [{ id: SALES_TAX.id, name: SALES_TAX.name, rate: SALES_TAX.rate }],
         })),
       },
       redirectUrl: `${origin}/checkout/confirm`,
@@ -295,7 +297,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       checkoutUrl,
       pickup: { date: pickupDate, slot: pickupSlot },
-      total,
+      subtotal: subtotalCents / 100,
+      tax: taxCents / 100,
+      total: totalCents / 100,
     });
   } catch (err) {
     console.error("[Clover Orders] unexpected error:", err);

@@ -26,6 +26,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { products, effectiveCloverItemId } from "@/lib/products";
+import { taxCents } from "@/lib/tax";
 
 // Give this route more time than Vercel's default (was silently truncating
 // the webhook mid-execution on slow runs — see [Webhook] timeout note below).
@@ -315,6 +316,9 @@ export async function POST(request: NextRequest) {
   // Find the order via the payment ID
   // Clover Hosted Checkout doesn't send orderId directly — we look it up
   let orderId: string | null = null;
+  // What Clover actually charged (amount includes tax), used for the email.
+  let paidAmountCents: number | null = null;
+  let paidTaxCents: number | null = null;
 
   if (paymentId) {
     try {
@@ -331,6 +335,8 @@ export async function POST(request: NextRequest) {
       if (paymentRes.ok) {
         const paymentData = await paymentRes.json();
         orderId = paymentData.order?.id || null;
+        if (typeof paymentData.amount === "number") paidAmountCents = paymentData.amount;
+        if (typeof paymentData.taxAmount === "number") paidTaxCents = paymentData.taxAmount;
         console.log(
           `[Webhook] payment ${paymentId} -> order ${orderId}`
         );
@@ -419,6 +425,19 @@ export async function POST(request: NextRequest) {
         pickupDateLabel = `${weekday} · ${pretty}`;
       }
 
+      const itemsSubtotalCents = lineItems.reduce((s: number, li: any) => {
+        const q = li.unitQty >= 1000 ? Math.round(li.unitQty / 1000) : (li.unitQty || 1);
+        return s + (li.price || 0) * q;
+      }, 0);
+      // Prefer the real charge from the payment; fall back to our own math.
+      const taxChargedCents = paidTaxCents ?? taxCents(itemsSubtotalCents);
+      const totalChargedCents = paidAmountCents ?? itemsSubtotalCents + taxChargedCents;
+      if (totalChargedCents - taxChargedCents !== itemsSubtotalCents) {
+        console.warn(
+          `[Webhook] totals mismatch: items ${itemsSubtotalCents}c + tax ${taxChargedCents}c != paid ${totalChargedCents}c`
+        );
+      }
+
       const n8nPayload = {
         orderId,
         customerName: noteFields["Customer"] || "Online Customer",
@@ -432,10 +451,9 @@ export async function POST(request: NextRequest) {
           qty: li.unitQty >= 1000 ? Math.round(li.unitQty / 1000) : (li.unitQty || 1),
           price: `$${((li.price || 0) / 100).toFixed(2)}`,
         })),
-        total: `$${(lineItems.reduce((s: number, li: any) => {
-          const q = li.unitQty >= 1000 ? Math.round(li.unitQty / 1000) : (li.unitQty || 1);
-          return s + (li.price || 0) * q;
-        }, 0) / 100).toFixed(2)}`,
+        subtotal: `$${(itemsSubtotalCents / 100).toFixed(2)}`,
+        tax: `$${(taxChargedCents / 100).toFixed(2)}`,
+        total: `$${(totalChargedCents / 100).toFixed(2)}`,
       };
 
       console.log("[Webhook] sending n8n notification:", JSON.stringify(n8nPayload));
