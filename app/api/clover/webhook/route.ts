@@ -10,8 +10,9 @@
  *   1. Log the payment (audit trail)
  *   2. Find the order via the payment ID
  *   3. Send the n8n order-notification email
- *   4. Decrement stock (batched per item, with 429 retry)
- *   5. Set order type to "Pickup" (shows on POS)
+ *   4. Redeem the Swiss Passport reward code, if the order used one
+ *   5. Decrement stock (batched per item, with 429 retry)
+ *   6. Set order type to "Pickup" (shows on POS)
  *
  * NOTE (2026-07-11): the old "link line items to inventory" step was removed.
  * Clover returns 200 for that POST on locked orders but silently ignores it
@@ -27,6 +28,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { products, effectiveCloverItemId } from "@/lib/products";
 import { taxCents } from "@/lib/tax";
+import { checkReward } from "@/lib/passport";
 
 // Give this route more time than Vercel's default (was silently truncating
 // the webhook mid-execution on slow runs — see [Webhook] timeout note below).
@@ -476,6 +478,30 @@ export async function POST(request: NextRequest) {
       console.error("[Webhook] n8n notification error:", err);
     }
 
+    // ---- SWISS PASSPORT REWARD ----
+    // The checkout put "Reward: SWISS-XXXXXX" in the note and already charged
+    // the discounted prices; now that the payment is APPROVED, mark the code
+    // used. Idempotent per order, so a retried webhook is harmless. Runs in
+    // parallel with the stock decrement (awaited after it) so it doesn't eat
+    // that step's time budget.
+    const note: string = lineItems[0]?.note || "";
+    const rewardMatch = /(?:^| \| )Reward: (SWISS-[A-Z0-9]{6})(?: \||$)/.exec(note);
+    const emailMatch = /(?:^| \| )Email: ([^|]+?)(?: \||$)/.exec(note);
+    const rewardDone =
+      rewardMatch && emailMatch
+        ? checkReward(rewardMatch[1], emailMatch[1].trim(), orderId).then((redeemed) => {
+            if (redeemed.valid) {
+              console.log(`[Passport] reward ${rewardMatch[1]} redeemed on order ${orderId}`);
+            } else {
+              // Payment already went through at the discounted price — log
+              // loudly so it can be fixed by hand in the dashboard.
+              console.error(
+                `[Passport] reward ${rewardMatch[1]} NOT redeemed on order ${orderId}: ${redeemed.reason}`
+              );
+            }
+          })
+        : Promise.resolve();
+
     // ---- STOCK DECREMENT (batched per Clover item) ----
     // The old version did read+write per LINE ITEM. Orders often carry the
     // same product as multiple line items (e.g. 3x "Plain Croissant" = 3
@@ -559,6 +585,8 @@ export async function POST(request: NextRequest) {
         console.error(`[Stock] decrement failed for ${name}:`, updateRes?.status, errText);
       }
     }
+
+    await rewardDone;
 
     // Set order type to "Pickup" — shows on POS.
     // Runs last: it's the slowest, most rate-limited step (Clover 429s on

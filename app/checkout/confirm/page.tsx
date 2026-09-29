@@ -16,6 +16,7 @@ interface OrderData {
   pickupDate: string;
   pickupSlot: string;
   subtotal?: number;
+  discount?: number;
   tax?: number;
   total: number;
 }
@@ -137,7 +138,14 @@ function ConfirmContent() {
               <Row label="Time" value={slotLabel(order.pickupSlot)} />
               {typeof order.subtotal === "number" && typeof order.tax === "number" && (
                 <>
-                  <Row label="Subtotal" value={formatPrice(order.subtotal)} />
+                  {order.discount ? (
+                    <>
+                      <Row label="Subtotal" value={formatPrice(order.subtotal + order.discount)} />
+                      <Row label="Passport reward" value={`−${formatPrice(order.discount)}`} />
+                    </>
+                  ) : (
+                    <Row label="Subtotal" value={formatPrice(order.subtotal)} />
+                  )}
                   <Row label="Tax" value={formatPrice(order.tax)} />
                 </>
               )}

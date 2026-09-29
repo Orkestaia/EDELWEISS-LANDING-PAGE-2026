@@ -66,11 +66,17 @@ function prettyDate(value: string) {
 
 export default function CheckoutPage() {
   const { items, total, count, hydrated, clear } = useCart();
-  const totals = cartTotals(items);
   const dates = useMemo(buildPickupDates, []);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  // Swiss Passport reward (15% off). Checked against the email, so changing the
+  // email drops an applied code.
+  const [rewardInput, setRewardInput] = useState("");
+  const [reward, setReward] = useState<{ code: string; percent: number } | null>(null);
+  const [rewardStatus, setRewardStatus] = useState<"idle" | "checking">("idle");
+  const [rewardError, setRewardError] = useState<string | null>(null);
+  const totals = cartTotals(items, reward?.percent ?? 0);
   const [phone, setPhone] = useState("");
   const [pickupDate, setPickupDate] = useState(dates[0]?.value ?? "");
   const [pickupSlot, setPickupSlot] = useState("");
@@ -82,6 +88,31 @@ export default function CheckoutPage() {
     const entry = dates.find((d) => d.value === pickupDate);
     return slotsForDate(pickupDate, entry?.weekday ?? 2);
   }, [pickupDate, dates]);
+
+  async function applyReward() {
+    setRewardError(null);
+    if (!rewardInput.trim()) return;
+    setRewardStatus("checking");
+    try {
+      const res = await fetch("/api/passport/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: rewardInput, email: email.trim() }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setReward({ code: data.code, percent: data.percent });
+        setRewardInput(data.code);
+      } else {
+        setReward(null);
+        setRewardError(data.error || "That code isn't valid.");
+      }
+    } catch {
+      setRewardError("Network error. Please try again.");
+    } finally {
+      setRewardStatus("idle");
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -102,10 +133,15 @@ export default function CheckoutPage() {
           pickupDate,
           pickupSlot,
           notes: notes.trim(),
+          ...(reward ? { rewardCode: reward.code } : {}),
         }),
       });
       const data = await res.json();
       if (!res.ok) {
+        if (data.rewardInvalid) {
+          setReward(null);
+          setRewardError(data.error);
+        }
         setError(data.error || "Something went wrong. Please try again.");
         setStatus("error");
         return;
@@ -119,6 +155,7 @@ export default function CheckoutPage() {
           pickupDate,
           pickupSlot,
           subtotal: data.subtotal,
+          discount: data.discount,
           tax: data.tax,
           total: data.total,
         })
@@ -210,7 +247,13 @@ export default function CheckoutPage() {
                     type="email"
                     required
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (reward) {
+                        setReward(null);
+                        setRewardError("Your email changed. Please apply your code again.");
+                      }
+                    }}
                     className="cf-input"
                     placeholder="jane@inbox.com"
                   />
@@ -292,6 +335,73 @@ export default function CheckoutPage() {
               </p>
             </fieldset>
 
+            <fieldset className="space-y-3" disabled={status === "submitting"}>
+              <legend className="font-display text-2xl text-cocoa mb-2">
+                Swiss Passport reward
+              </legend>
+              {reward ? (
+                <div className="flex items-center justify-between gap-4 rounded-xl border border-forest/30 bg-forest/5 px-4 py-3">
+                  <div className="text-sm text-cocoa">
+                    <span className="font-semibold tracking-wider">{reward.code}</span>
+                    <span className="block text-forest">
+                      {reward.percent}% off applied — thank you for travelling with us!
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReward(null);
+                      setRewardInput("");
+                    }}
+                    className="text-xs uppercase tracking-[0.2em] text-cocoa/60 hover:text-rust"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    value={rewardInput}
+                    onChange={(e) => {
+                      setRewardInput(e.target.value.toUpperCase());
+                      setRewardError(null);
+                    }}
+                    onKeyDown={(e) => {
+                      // Enter applies the code instead of submitting the order.
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        applyReward();
+                      }
+                    }}
+                    className="cf-input flex-1 tracking-wider"
+                    placeholder="SWISS-XXXXXX"
+                    autoComplete="off"
+                    maxLength={20}
+                  />
+                  <button
+                    type="button"
+                    onClick={applyReward}
+                    disabled={!rewardInput.trim() || rewardStatus === "checking"}
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-cocoa/25 px-6 text-sm uppercase tracking-[0.2em] text-cocoa hover:bg-cocoa hover:text-cream-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {rewardStatus === "checking" ? (
+                      <Loader2 size={15} className="animate-spin" />
+                    ) : (
+                      "Apply"
+                    )}
+                  </button>
+                </div>
+              )}
+              {rewardError && <p className="text-sm text-rust">{rewardError}</p>}
+              {!reward && (
+                <p className="text-xs text-cocoa/55">
+                  Completed your Swiss Passport? Enter your 15% code here, using
+                  the same email as your passport.
+                </p>
+              )}
+            </fieldset>
+
             {error && (
               <div className="rounded-xl border border-rust/30 bg-rust/5 px-4 py-3 text-sm text-rust">
                 {error}
@@ -346,8 +456,18 @@ export default function CheckoutPage() {
               <div className="mt-6 pt-5 border-t border-cocoa/10 space-y-1.5">
                 <div className="flex items-center justify-between text-sm text-cocoa/70">
                   <span>Subtotal</span>
-                  <span className="tabular-nums">{formatPrice(totals.subtotalCents / 100)}</span>
+                  <span className="tabular-nums">
+                    {formatPrice(totals.originalSubtotalCents / 100)}
+                  </span>
                 </div>
+                {reward && totals.discountCents > 0 && (
+                  <div className="flex items-center justify-between text-sm text-forest">
+                    <span>Swiss Passport reward ({reward.percent}%)</span>
+                    <span className="tabular-nums">
+                      −{formatPrice(totals.discountCents / 100)}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-sm text-cocoa/70">
                   <span>Tax ({SALES_TAX_PERCENT}%)</span>
                   <span className="tabular-nums">{formatPrice(totals.taxCents / 100)}</span>

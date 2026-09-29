@@ -23,7 +23,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { products, effectiveCloverItemId } from "@/lib/products";
-import { SALES_TAX, cartTotals, toCents } from "@/lib/tax";
+import { SALES_TAX, cartTotals, discountedUnitCents, toCents } from "@/lib/tax";
+import { checkReward, normalizeRewardCode, rewardErrorMessage } from "@/lib/passport";
 
 const isSandbox = process.env.NEXT_PUBLIC_ENV === "sandbox";
 const CLOVER_API_URL = isSandbox
@@ -160,6 +161,23 @@ export async function POST(request: NextRequest) {
     notes?: string;
   };
 
+  // Swiss Passport reward: re-checked here (never trust the browser). It is
+  // only redeemed by the webhook once the payment is APPROVED, so an abandoned
+  // checkout leaves the code usable.
+  let rewardCode: string | null = null;
+  let discountPercent = 0;
+  if (body.rewardCode) {
+    rewardCode = normalizeRewardCode(body.rewardCode);
+    const reward = await checkReward(rewardCode, customer.email.trim());
+    if (!reward.valid) {
+      return NextResponse.json(
+        { error: rewardErrorMessage(reward.reason), rewardInvalid: true },
+        { status: 400 }
+      );
+    }
+    discountPercent = reward.percent;
+  }
+
   // Resolver el Clover item ID para cada producto (si está mapeado).
   // Usamos el slug que envía el frontend para buscar en `lib/products`.
   const itemsWithIds = items.map((it) => {
@@ -222,7 +240,10 @@ export async function POST(request: NextRequest) {
   try {
     // Una única orden: la crea automáticamente Clover Hosted Checkout al pagar.
     // Toda la info de pickup va como "note" para que aparezca en el POS junto al pago.
-    const { subtotalCents, taxCents, totalCents } = cartTotals(items);
+    const { subtotalCents, taxCents, totalCents, discountCents } = cartTotals(
+      items,
+      discountPercent
+    );
     const origin = request.nextUrl.origin;
     const firstName = customer.name.split(" ")[0];
     const lastName = customer.name.split(" ").slice(1).join(" ") || firstName;
@@ -234,6 +255,8 @@ export async function POST(request: NextRequest) {
       `Pick-up: ${pickupDate} at ${pickupSlot}`,
       `Phone: ${customer.phone || "—"}`,
       notes ? `Notes: ${notes}` : null,
+      // Read back by the webhook to redeem the code after payment.
+      rewardCode ? `Reward: ${rewardCode}` : null,
     ]
       .filter(Boolean)
       .join(" | ");
@@ -249,7 +272,8 @@ export async function POST(request: NextRequest) {
         lineItems: itemsWithIds.map((it) => ({
           name: it.name,
           unitQty: it.quantity,
-          price: toCents(it.price),
+          // Names stay unchanged: the webhook matches them to products for stock.
+          price: discountedUnitCents(toCents(it.price), discountPercent),
           note: pickupNote,
           taxRates: [{ id: SALES_TAX.id, name: SALES_TAX.name, rate: SALES_TAX.rate }],
         })),
@@ -298,6 +322,7 @@ export async function POST(request: NextRequest) {
       checkoutUrl,
       pickup: { date: pickupDate, slot: pickupSlot },
       subtotal: subtotalCents / 100,
+      discount: discountCents / 100,
       tax: taxCents / 100,
       total: totalCents / 100,
     });

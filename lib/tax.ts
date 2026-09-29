@@ -37,13 +37,37 @@ export function taxCents(subtotalCents: number): number {
   return Math.floor((subtotalCents * SALES_TAX.rate + 5_000_000) / 10_000_000);
 }
 
-export function cartTotals(items: { price: number; quantity: number }[]) {
-  const subtotalCents = items.reduce(
+/**
+ * Unit price after a percentage discount, in cents. Hosted Checkout has no
+ * discount field, so a reward is applied by lowering each line item's unit
+ * price — this is the exact price sent to Clover.
+ */
+export function discountedUnitCents(priceCents: number, discountPercent: number): number {
+  if (!discountPercent) return priceCents;
+  return Math.round((priceCents * (100 - discountPercent)) / 100);
+}
+
+/**
+ * Totals exactly as Clover will compute them. With a discount, `subtotalCents`
+ * is the discounted (taxable) subtotal; `originalSubtotalCents - discountCents`
+ * always equals it.
+ */
+export function cartTotals(
+  items: { price: number; quantity: number }[],
+  discountPercent = 0
+) {
+  const originalSubtotalCents = items.reduce(
     (sum, it) => sum + toCents(it.price) * it.quantity,
+    0
+  );
+  const subtotalCents = items.reduce(
+    (sum, it) => sum + discountedUnitCents(toCents(it.price), discountPercent) * it.quantity,
     0
   );
   const tax = taxCents(subtotalCents);
   return {
+    originalSubtotalCents,
+    discountCents: originalSubtotalCents - subtotalCents,
     subtotalCents,
     taxCents: tax,
     totalCents: subtotalCents + tax,
