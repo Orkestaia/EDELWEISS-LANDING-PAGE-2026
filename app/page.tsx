@@ -14,6 +14,7 @@ import { NewsletterModal } from "@/components/NewsletterModal";
 import { SignupPopup } from "@/components/SignupPopup";
 import { HolidayNotice } from "@/components/HolidayNotice";
 import { MondayNotice } from "@/components/MondayNotice";
+import { ClosureNotice } from "@/components/ClosureNotice";
 
 export default function Home() {
   return (
@@ -34,6 +35,7 @@ export default function Home() {
       <SignupPopup />
       <HolidayNotice />
       <MondayNotice />
+      <ClosureNotice />
     </main>
   );
 }

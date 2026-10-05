@@ -6,6 +6,7 @@ import { X, ShoppingBag, Clock, Calendar, MapPin, RefreshCw } from "lucide-react
 import Link from "next/link";
 import { EdelweissMark } from "./EdelweissMark";
 import { isMondayNoticePending } from "./MondayNotice";
+import { isClosureNoticePending } from "./ClosureNotice";
 
 // Bumped v2 → v3 so the special-hours notice below is shown once to every
 // visitor (including those who already dismissed the previous version).
@@ -65,6 +66,7 @@ export function NewsletterModal() {
     // The Monday-opening announcement takes the first slot while it is running;
     // this intro comes back on the visitor's next page load.
     if (isMondayNoticePending()) return;
+    if (isClosureNoticePending()) return;
     const timer = window.setTimeout(() => setOpen(true), DELAY_MS);
     return () => window.clearTimeout(timer);
   }, []);

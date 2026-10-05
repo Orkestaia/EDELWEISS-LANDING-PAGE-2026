@@ -25,6 +25,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { products, effectiveCloverItemId } from "@/lib/products";
 import { SALES_TAX, cartTotals, discountedUnitCents, toCents } from "@/lib/tax";
 import { checkReward, normalizeRewardCode, rewardErrorMessage } from "@/lib/passport";
+import { isClosedDate } from "@/lib/closures";
 
 const isSandbox = process.env.NEXT_PUBLIC_ENV === "sandbox";
 const CLOVER_API_URL = isSandbox
@@ -104,6 +105,12 @@ function validate(body: any): { valid: boolean; error?: string } {
   const d = new Date(`${body.pickupDate}T12:00:00Z`);
   if (isNaN(d.getTime())) {
     return { valid: false, error: "Invalid pick-up date." };
+  }
+  if (isClosedDate(body.pickupDate)) {
+    return {
+      valid: false,
+      error: "Sorry, we are closed that day. Please choose another pick-up date.",
+    };
   }
   // July 4th 2026: special hours 8am–12pm. Last pick-up slot is 11:00.
   if (body.pickupDate === "2026-07-04" && body.pickupSlot > "11:00") {

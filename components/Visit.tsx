@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { MapPin, Clock, Phone, Mail } from "lucide-react";
 import { Reveal } from "./Reveal";
 import { AlpineSilhouette } from "./AlpineBackground";
+import { isClosedToday } from "@/lib/closures";
 
 const hours = [
   ["Monday", "7am – 2pm"],
@@ -37,11 +39,16 @@ function isMondayNewsWindow() {
   const now = new Date();
   return (
     now >= new Date("2026-09-11T00:00:00") &&
-    now <= new Date("2026-10-05T23:59:59")
+    now <= new Date("2026-10-05T23:59:59") &&
+    !isClosedToday()
   );
 }
 
 export function Visit() {
+  // Computed in the browser: the page is prerendered, so a build-time date
+  // check would keep showing the banner after the closed day.
+  const [closedToday, setClosedToday] = useState(false);
+  useEffect(() => setClosedToday(isClosedToday()), []);
   return (
     <section id="visit" className="relative isolate bg-cream-100 paper overflow-hidden">
       <AlpineSilhouette
@@ -150,6 +157,17 @@ export function Visit() {
                   <p className="text-sm text-cocoa">
                     This Saturday we open <strong>8am – 12pm only.</strong>{" "}
                     Happy Independence Day!
+                  </p>
+                </div>
+              )}
+              {closedToday && (
+                <div className="mt-5 rounded-xl border border-rust/40 bg-rust/10 px-4 py-3">
+                  <p className="text-xs uppercase tracking-[0.2em] text-rust font-semibold mb-0.5">
+                    Closed today
+                  </p>
+                  <p className="text-sm text-cocoa">
+                    For health reasons the bakery is <strong>closed today</strong>{" "}
+                    and there are no pick-ups. Thank you for understanding!
                   </p>
                 </div>
               )}

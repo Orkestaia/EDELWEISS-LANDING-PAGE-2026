@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { X, CalendarCheck } from "lucide-react";
 import Link from "next/link";
 import { EdelweissMark } from "./EdelweissMark";
+import { isClosedToday } from "@/lib/closures";
 
 const STORAGE_KEY = "edelweiss_monday_opening_v1";
 const OPENING_DATE = new Date("2026-09-14T00:00:00");
@@ -33,6 +34,8 @@ export function MondayNotice() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!isMondayNoticePending()) return;
+    // Never announce "open on Mondays" on a day the shop is closed.
+    if (isClosedToday()) return;
     const t = window.setTimeout(() => setOpen(true), DELAY_MS);
     return () => window.clearTimeout(t);
   }, []);

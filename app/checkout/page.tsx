@@ -9,6 +9,7 @@ import { Footer } from "@/components/Footer";
 import { useCart, formatPrice } from "@/lib/cart";
 import { trackBeginCheckout } from "@/lib/analytics";
 import { cartTotals, SALES_TAX_PERCENT } from "@/lib/tax";
+import { isClosedDate } from "@/lib/closures";
 
 type Status = "idle" | "submitting" | "error";
 
@@ -23,6 +24,8 @@ function buildPickupDates() {
       2,
       "0"
     )}-${String(d.getDate()).padStart(2, "0")}`;
+    // Unplanned closures (lib/closures.ts): no pick-ups that day.
+    if (isClosedDate(value)) continue;
     const label = d.toLocaleDateString("en-US", {
       weekday: "short",
       month: "short",
