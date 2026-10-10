@@ -89,7 +89,7 @@ export const products: Product[] = [
     name: "Orange Brioche · Hazelnut Crème",
     category: "Breakfast",
     description:
-      "Buttery orange-scented brioche filled with house-made hazelnut pastry crème.",
+      "Buttery orange-scented brioche with milk chocolate and hazelnut pieces.",
     image: "/images/products/brioche.jpg",
     price: "$5.00",
     tag: "Weekend",

@@ -4,26 +4,32 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { EdelweissMark } from "./EdelweissMark";
-import { isClosedToday, maineToday } from "@/lib/closures";
+import { activeClosure, type ActiveClosure } from "@/lib/closures";
 
 const DELAY_MS = 1200;
-const storageKey = () => `edelweiss_closed_notice_${maineToday()}`;
+// Seen once as an advance notice and once again on the day itself.
+const storageKey = (c: ActiveClosure) =>
+  `edelweiss_closed_notice_${c.date}_${c.isToday ? "today" : "ahead"}`;
 
 /**
- * True while today's closure popup still has to be shown. The other popups
- * (Monday news, welcome modal) read this so nothing stacks on top of it.
+ * True while a closure popup (today's, or an announced upcoming one) still
+ * has to be shown. The other popups (Monday news, welcome modal) read this so
+ * nothing stacks on top of it.
  */
 export function isClosureNoticePending() {
   if (typeof window === "undefined") return false;
-  return isClosedToday() && !window.localStorage.getItem(storageKey());
+  const c = activeClosure();
+  return !!c && !window.localStorage.getItem(storageKey(c));
 }
 
-/** Popup shown on days listed in lib/closures.ts. Inactive on any other day. */
+/** Popup for closures listed in lib/closures.ts. Inactive on any other day. */
 export function ClosureNotice() {
+  const [closure, setClosure] = useState<ActiveClosure | null>(null);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     if (!isClosureNoticePending()) return;
+    setClosure(activeClosure());
     const t = window.setTimeout(() => setOpen(true), DELAY_MS);
     return () => window.clearTimeout(t);
   }, []);
@@ -37,14 +43,19 @@ export function ClosureNotice() {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const dismiss = () => {
     setOpen(false);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(storageKey(), "seen");
+    if (typeof window !== "undefined" && closure) {
+      window.localStorage.setItem(storageKey(closure), "seen");
     }
   };
+
+  if (!closure) return null;
+  const { isToday, weekday, longDate, backOn, closure: info } = closure;
+  const holiday = info.reason === "holiday";
 
   return (
     <AnimatePresence>
@@ -85,7 +96,7 @@ export function ClosureNotice() {
               <div className="flex items-center gap-2">
                 <EdelweissMark size={22} className="text-mustard" />
                 <span className="text-[0.6rem] uppercase tracking-[0.3em] text-cream-50/60">
-                  Today&apos;s update
+                  {isToday ? "Today's update" : "Heads up"}
                 </span>
               </div>
 
@@ -93,25 +104,52 @@ export function ClosureNotice() {
                 id="closure-title"
                 className="mt-4 font-display text-3xl sm:text-4xl leading-[1.1] text-cream-50"
               >
-                We&apos;re closed
-                <span className="block italic text-mustard">today, Monday.</span>
+                {isToday ? (
+                  <>
+                    We&apos;re closed
+                    <span className="block italic text-mustard">today, {weekday}.</span>
+                  </>
+                ) : (
+                  <>
+                    Closed on
+                    <span className="block italic text-mustard">{longDate}.</span>
+                  </>
+                )}
               </h2>
 
               <p className="mt-4 text-cream-50/75 text-sm leading-relaxed">
-                Alex and Valentina are feeling under the weather, so for health
-                reasons the bakery is <strong className="text-cream-50">closed today</strong> and
-                there are no pick-ups. Thank you for understanding.
+                {holiday ? (
+                  isToday ? (
+                    <>
+                      It&apos;s {info.label}, so the bakery is{" "}
+                      <strong className="text-cream-50">closed today</strong> and there are
+                      no pick-ups. Enjoy the long weekend!
+                    </>
+                  ) : (
+                    <>
+                      The bakery will be <strong className="text-cream-50">closed on {longDate}</strong>{" "}
+                      for {info.label}, so there are no pick-ups that day. Online orders for
+                      any other day are open as usual.
+                    </>
+                  )
+                ) : (
+                  <>
+                    Alex and Valentina are feeling under the weather, so for health
+                    reasons the bakery is <strong className="text-cream-50">closed today</strong>{" "}
+                    and there are no pick-ups. Thank you for understanding.
+                  </>
+                )}
               </p>
 
               <div className="mt-6 rounded-2xl border border-cream-50/15 bg-cream-50/[0.06] p-4 text-sm">
                 <span className="text-cream-50/60 uppercase tracking-[0.18em] text-[0.65rem]">
-                  Back tomorrow
+                  {isToday ? "Back tomorrow" : "Back on"}
                 </span>
-                <div className="mt-1 font-display text-2xl text-cream-50">
-                  Tuesday · 7:00 am
-                </div>
+                <div className="mt-1 font-display text-2xl text-cream-50">{backOn}</div>
                 <p className="mt-1 text-cream-50/60 text-xs">
-                  Online orders for pick-up from Tuesday are open.
+                  {isToday
+                    ? "Online orders for pick-up from tomorrow are open."
+                    : "Every other day we're open as usual."}
                 </p>
               </div>
 
@@ -120,7 +158,7 @@ export function ClosureNotice() {
                 onClick={dismiss}
                 className="mt-5 w-full inline-flex items-center justify-center rounded-full bg-mustard text-cocoa px-6 py-3 text-xs uppercase tracking-[0.2em] font-semibold hover:bg-mustard/90 transition-colors"
               >
-                Got it, get well soon!
+                {holiday ? "Got it, thanks!" : "Got it, get well soon!"}
               </button>
             </div>
           </motion.div>

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { MapPin, Clock, Phone, Mail } from "lucide-react";
 import { Reveal } from "./Reveal";
 import { AlpineSilhouette } from "./AlpineBackground";
-import { isClosedToday } from "@/lib/closures";
+import { isClosedToday, activeClosure, type ActiveClosure } from "@/lib/closures";
 
 const hours = [
   ["Monday", "7am – 2pm"],
@@ -47,8 +47,8 @@ function isMondayNewsWindow() {
 export function Visit() {
   // Computed in the browser: the page is prerendered, so a build-time date
   // check would keep showing the banner after the closed day.
-  const [closedToday, setClosedToday] = useState(false);
-  useEffect(() => setClosedToday(isClosedToday()), []);
+  const [closure, setClosure] = useState<ActiveClosure | null>(null);
+  useEffect(() => setClosure(activeClosure()), []);
   return (
     <section id="visit" className="relative isolate bg-cream-100 paper overflow-hidden">
       <AlpineSilhouette
@@ -160,14 +160,32 @@ export function Visit() {
                   </p>
                 </div>
               )}
-              {closedToday && (
+              {closure && (
                 <div className="mt-5 rounded-xl border border-rust/40 bg-rust/10 px-4 py-3">
                   <p className="text-xs uppercase tracking-[0.2em] text-rust font-semibold mb-0.5">
-                    Closed today
+                    {closure.isToday ? "Closed today" : `Closed ${closure.longDate}`}
                   </p>
                   <p className="text-sm text-cocoa">
-                    For health reasons the bakery is <strong>closed today</strong>{" "}
-                    and there are no pick-ups. Thank you for understanding!
+                    {closure.closure.reason === "holiday" ? (
+                      closure.isToday ? (
+                        <>
+                          It&apos;s {closure.closure.label}: the bakery is{" "}
+                          <strong>closed today</strong> and there are no pick-ups.
+                          Back {closure.backOn}.
+                        </>
+                      ) : (
+                        <>
+                          We&apos;re <strong>closed on {closure.longDate}</strong> for{" "}
+                          {closure.closure.label}. No pick-ups that day; back{" "}
+                          {closure.backOn}.
+                        </>
+                      )
+                    ) : (
+                      <>
+                        For health reasons the bakery is <strong>closed today</strong>{" "}
+                        and there are no pick-ups. Thank you for understanding!
+                      </>
+                    )}
                   </p>
                 </div>
               )}
@@ -210,6 +228,7 @@ export function Visit() {
                 {hours.map(([d, t]) => {
                   const isSatJuly4 = d === "Saturday" && isJuly4Week();
                   const isNewMonday = d === "Monday" && isMondayNewsWindow();
+                  const isClosureDay = !!closure && closure.weekday === d;
                   return (
                     <div
                       key={d}
@@ -218,8 +237,8 @@ export function Visit() {
                       <dt className="font-display text-xl text-cocoa">{d}</dt>
                       <dd
                         className={`text-right text-sm tracking-[0.18em] uppercase ${
-                          t === "Closed"
-                            ? "text-rust"
+                          t === "Closed" || isClosureDay
+                            ? "text-rust font-semibold"
                             : isSatJuly4
                             ? "text-mustard font-semibold"
                             : isNewMonday
@@ -227,7 +246,13 @@ export function Visit() {
                             : "text-cocoa/75"
                         }`}
                       >
-                        {isSatJuly4 ? "8am – 12pm ★" : isNewMonday ? `${t} ✨` : t}
+                        {isClosureDay
+                          ? `Closed ${closure!.shortDate}`
+                          : isSatJuly4
+                          ? "8am – 12pm ★"
+                          : isNewMonday
+                          ? `${t} ✨`
+                          : t}
                       </dd>
                     </div>
                   );
