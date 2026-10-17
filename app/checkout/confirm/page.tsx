@@ -19,6 +19,11 @@ interface OrderData {
   discount?: number;
   tax?: number;
   total: number;
+  fulfillment?: "pickup" | "delivery";
+  deliveryAddress?: string;
+  readyAt?: string;
+  etaDropoff?: string | null;
+  deliveryFee?: number;
 }
 
 function prettyDate(value: string) {
@@ -32,9 +37,10 @@ function prettyDate(value: string) {
 
 function slotLabel(slot: string) {
   const h = parseInt(slot.slice(0, 2), 10);
-  if (h === 12) return "12:00 PM";
-  if (h > 12) return `${h - 12}:00 PM`;
-  return `${h}:00 AM`;
+  const m = slot.slice(3, 5) || "00";
+  if (h === 12) return `12:${m} PM`;
+  if (h > 12) return `${h - 12}:${m} PM`;
+  return `${h}:${m} AM`;
 }
 
 function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
@@ -124,8 +130,9 @@ function ConfirmContent() {
         </h1>
 
         <p className="mt-5 text-cocoa/75 leading-relaxed">
-          Payment received. We&apos;ll have everything freshly packed and ready
-          for you. Just show your name at the counter.
+          {order?.fulfillment === "delivery"
+            ? "Payment received. We're packing your order now and a DoorDash courier will bring it to you. Keep your phone handy: the driver may call on arrival."
+            : "Payment received. We'll have everything freshly packed and ready for you. Just show your name at the counter."}
         </p>
 
         <div className="mt-10 mx-auto max-w-sm rounded-2xl bg-cream-100 border border-cocoa/10 p-7 text-left">
@@ -134,8 +141,20 @@ function ConfirmContent() {
           )}
           {order && (
             <>
-              <Row label="Pick-up" value={prettyDate(order.pickupDate)} />
-              <Row label="Time" value={slotLabel(order.pickupSlot)} />
+              {order.fulfillment === "delivery" ? (
+                <>
+                  <Row label="Deliver to" value={order.deliveryAddress || "—"} />
+                  <Row
+                    label="Arrives"
+                    value={order.etaDropoff ? `around ${order.etaDropoff}` : `courier from ${slotLabel(order.pickupSlot)}`}
+                  />
+                </>
+              ) : (
+                <>
+                  <Row label="Pick-up" value={prettyDate(order.pickupDate)} />
+                  <Row label="Time" value={slotLabel(order.pickupSlot)} />
+                </>
+              )}
               {typeof order.subtotal === "number" && typeof order.tax === "number" && (
                 <>
                   {order.discount ? (
@@ -146,6 +165,9 @@ function ConfirmContent() {
                   ) : (
                     <Row label="Subtotal" value={formatPrice(order.subtotal)} />
                   )}
+                  {order.fulfillment === "delivery" && typeof order.deliveryFee === "number" && order.deliveryFee > 0 && (
+                    <Row label="Delivery" value={formatPrice(order.deliveryFee)} />
+                  )}
                   <Row label="Tax" value={formatPrice(order.tax)} />
                 </>
               )}
@@ -153,7 +175,9 @@ function ConfirmContent() {
             </>
           )}
           <div className="mt-4 pt-4 border-t border-cocoa/10 text-sm text-cocoa/60">
-            5 Alfred Street #103, Biddeford, ME 04005
+            {order?.fulfillment === "delivery"
+              ? "A tracking link is on its way to your inbox."
+              : "5 Alfred Street #103, Biddeford, ME 04005"}
           </div>
         </div>
 

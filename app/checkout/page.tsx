@@ -3,15 +3,30 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Clock, ShoppingBag, ArrowLeft, Loader2 } from "lucide-react";
+import { Clock, ShoppingBag, ArrowLeft, Loader2, Store, Truck } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { useCart, formatPrice } from "@/lib/cart";
 import { trackBeginCheckout } from "@/lib/analytics";
 import { cartTotals, SALES_TAX_PERCENT } from "@/lib/tax";
 import { isClosedDate } from "@/lib/closures";
+import {
+  DELIVERY_CITIES,
+  DELIVERY_ENABLED,
+  DELIVERY_HOURS,
+  DELIVERY_MIN_ORDER_CENTS,
+  DELIVERY_PREP_MINUTES,
+  normalizeZip,
+  pretty,
+} from "@/lib/delivery";
 
 type Status = "idle" | "submitting" | "error";
+type Fulfillment = "pickup" | "delivery";
+type Quote =
+  | { status: "idle" }
+  | { status: "checking" }
+  | { status: "ok"; feeCents: number; customerFeeCents: number; dropoffEta: string | null; address: string }
+  | { status: "error"; error: string };
 
 /** Genera las próximas 14 fechas (abrimos los 7 días desde el 14/09/2026). */
 function buildPickupDates() {
@@ -79,7 +94,21 @@ export default function CheckoutPage() {
   const [reward, setReward] = useState<{ code: string; percent: number } | null>(null);
   const [rewardStatus, setRewardStatus] = useState<"idle" | "checking">("idle");
   const [rewardError, setRewardError] = useState<string | null>(null);
-  const totals = cartTotals(items, reward?.percent ?? 0);
+  // Delivery (DoorDash courier). The quote is only a preview: the server
+  // re-prices the courier when the order is placed.
+  const [fulfillment, setFulfillment] = useState<Fulfillment>("pickup");
+  const [street, setStreet] = useState("");
+  const [unit, setUnit] = useState("");
+  const [city, setCity] = useState("");
+  const [zip, setZip] = useState("");
+  const [deliveryInstructions, setDeliveryInstructions] = useState("");
+  const [quote, setQuote] = useState<Quote>({ status: "idle" });
+  const resetQuote = () => setQuote((q) => (q.status === "idle" ? q : { status: "idle" }));
+  const totals = cartTotals(
+    items,
+    reward?.percent ?? 0,
+    fulfillment === "delivery" && quote.status === "ok" ? quote.customerFeeCents : 0
+  );
   const [phone, setPhone] = useState("");
   const [pickupDate, setPickupDate] = useState(dates[0]?.value ?? "");
   const [pickupSlot, setPickupSlot] = useState("");
@@ -117,6 +146,39 @@ export default function CheckoutPage() {
     }
   }
 
+  async function checkDelivery() {
+    setQuote({ status: "checking" });
+    try {
+      const res = await fetch("/api/doordash/quote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          phone: phone.trim(),
+          street: street.trim(),
+          unit: unit.trim(),
+          city,
+          zip: normalizeZip(zip),
+          subtotalCents: totals.originalSubtotalCents,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setQuote({
+          status: "ok",
+          feeCents: data.feeCents,
+          customerFeeCents: data.customerFeeCents,
+          dropoffEta: data.dropoffEta,
+          address: data.address,
+        });
+      } else {
+        setQuote({ status: "error", error: data.error || "Delivery isn't available right now." });
+      }
+    } catch {
+      setQuote({ status: "error", error: "Network error. Please try again." });
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setStatus("submitting");
@@ -133,8 +195,18 @@ export default function CheckoutPage() {
             quantity: i.quantity,
           })),
           customer: { name: name.trim(), email: email.trim(), phone: phone.trim() },
-          pickupDate,
-          pickupSlot,
+          fulfillment,
+          ...(fulfillment === "delivery"
+            ? {
+                delivery: {
+                  street: street.trim(),
+                  unit: unit.trim(),
+                  city,
+                  zip: normalizeZip(zip),
+                  instructions: deliveryInstructions.trim(),
+                },
+              }
+            : { pickupDate, pickupSlot }),
           notes: notes.trim(),
           ...(reward ? { rewardCode: reward.code } : {}),
         }),
@@ -155,8 +227,13 @@ export default function CheckoutPage() {
         JSON.stringify({
           name: name.trim(),
           email: email.trim(),
-          pickupDate,
-          pickupSlot,
+          pickupDate: data.pickup?.date ?? pickupDate,
+          pickupSlot: data.pickup?.slot ?? pickupSlot,
+          fulfillment: data.fulfillment ?? fulfillment,
+          deliveryAddress: data.delivery?.address,
+          readyAt: data.delivery?.readyAt,
+          etaDropoff: data.delivery?.etaDropoff,
+          deliveryFee: data.deliveryFee,
           subtotal: data.subtotal,
           discount: data.discount,
           tax: data.tax,
@@ -219,8 +296,17 @@ export default function CheckoutPage() {
           <ArrowLeft size={15} /> Back to the menu
         </Link>
         <h1 className="mt-5 font-display text-4xl sm:text-5xl text-cocoa leading-[1.05]">
-          Reserve your
-          <span className="italic text-forest"> pick-up.</span>
+          {fulfillment === "delivery" ? (
+            <>
+              Fresh pastry,
+              <span className="italic text-forest"> delivered.</span>
+            </>
+          ) : (
+            <>
+              Reserve your
+              <span className="italic text-forest"> pick-up.</span>
+            </>
+          )}
         </h1>
         <p className="mt-4 max-w-xl text-cocoa/70 leading-relaxed">
           Tell us who you are and when you&apos;ll swing by. We&apos;ll have it
@@ -261,11 +347,15 @@ export default function CheckoutPage() {
                     placeholder="jane@inbox.com"
                   />
                 </Field>
-                <Field label="Phone">
+                <Field label="Phone" required={fulfillment === "delivery"}>
                   <input
                     type="tel"
+                    required={fulfillment === "delivery"}
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => {
+                      setPhone(e.target.value);
+                      resetQuote();
+                    }}
                     className="cf-input"
                     placeholder="(207) 555-0123"
                   />
@@ -273,6 +363,43 @@ export default function CheckoutPage() {
               </div>
             </fieldset>
 
+            {DELIVERY_ENABLED && (
+              <fieldset className="space-y-3" disabled={status === "submitting"}>
+                <legend className="font-display text-2xl text-cocoa mb-2">
+                  How would you like it?
+                </legend>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setFulfillment("pickup")}
+                    className={`rounded-2xl border px-4 py-4 text-left transition-colors ${
+                      fulfillment === "pickup" ? "border-forest bg-forest/5" : "border-cocoa/15 hover:border-cocoa/40"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2 text-cocoa">
+                      <Store size={16} /> <span className="font-display text-xl">Pick up in store</span>
+                    </span>
+                    <span className="block mt-1 text-xs text-cocoa/60">Choose a day and time. Free.</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFulfillment("delivery")}
+                    className={`rounded-2xl border px-4 py-4 text-left transition-colors ${
+                      fulfillment === "delivery" ? "border-forest bg-forest/5" : "border-cocoa/15 hover:border-cocoa/40"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2 text-cocoa">
+                      <Truck size={16} /> <span className="font-display text-xl">Delivery</span>
+                    </span>
+                    <span className="block mt-1 text-xs text-cocoa/60">
+                      Same day, by DoorDash courier. From {pretty(DELIVERY_HOURS.open)} to {pretty(DELIVERY_HOURS.lastOrder)}.
+                    </span>
+                  </button>
+                </div>
+              </fieldset>
+            )}
+
+            {fulfillment === "pickup" && (
             <fieldset className="space-y-4" disabled={status === "submitting"}>
               <legend className="font-display text-2xl text-cocoa mb-2">
                 Pick-up time
@@ -337,6 +464,119 @@ export default function CheckoutPage() {
                 8am).
               </p>
             </fieldset>
+            )}
+
+            {fulfillment === "delivery" && (
+              <fieldset className="space-y-4" disabled={status === "submitting"}>
+                <legend className="font-display text-2xl text-cocoa mb-2">
+                  Delivery address
+                </legend>
+                <Field label="Street address" required>
+                  <input
+                    type="text"
+                    required
+                    value={street}
+                    onChange={(e) => { setStreet(e.target.value); resetQuote(); }}
+                    className="cf-input"
+                    placeholder="123 Main St"
+                    autoComplete="street-address"
+                  />
+                </Field>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <Field label="Apt / unit">
+                    <input
+                      type="text"
+                      value={unit}
+                      onChange={(e) => { setUnit(e.target.value); resetQuote(); }}
+                      className="cf-input"
+                      placeholder="Apt 2B"
+                    />
+                  </Field>
+                  <Field label="City" required>
+                    <select
+                      required
+                      value={city}
+                      onChange={(e) => { setCity(e.target.value); resetQuote(); }}
+                      className="cf-input"
+                    >
+                      <option value="" disabled>
+                        Choose…
+                      </option>
+                      {DELIVERY_CITIES.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="ZIP code" required>
+                    <input
+                      type="text"
+                      required
+                      inputMode="numeric"
+                      maxLength={5}
+                      value={zip}
+                      onChange={(e) => { setZip(e.target.value); resetQuote(); }}
+                      className="cf-input"
+                      placeholder="04005"
+                      autoComplete="postal-code"
+                    />
+                  </Field>
+                </div>
+                <Field label="Delivery notes (optional)">
+                  <input
+                    type="text"
+                    value={deliveryInstructions}
+                    onChange={(e) => setDeliveryInstructions(e.target.value)}
+                    className="cf-input"
+                    placeholder="Gate code, leave at the door, call on arrival…"
+                    maxLength={250}
+                  />
+                </Field>
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={checkDelivery}
+                    disabled={
+                      quote.status === "checking" ||
+                      !street.trim() ||
+                      !city ||
+                      normalizeZip(zip).length !== 5 ||
+                      !phone.trim()
+                    }
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-cocoa/25 px-6 py-2.5 text-sm uppercase tracking-[0.2em] text-cocoa hover:bg-cocoa hover:text-cream-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {quote.status === "checking" ? (
+                      <>
+                        <Loader2 size={15} className="animate-spin" /> Checking…
+                      </>
+                    ) : quote.status === "ok" ? (
+                      "Re-check"
+                    ) : (
+                      "Check delivery"
+                    )}
+                  </button>
+                  {quote.status === "ok" && (
+                    <span className="text-sm text-forest">
+                      Delivery {formatPrice(quote.customerFeeCents / 100)}
+                      {quote.dropoffEta ? ` · arrives around ${quote.dropoffEta}` : ""}
+                    </span>
+                  )}
+                </div>
+                {quote.status === "error" && <p className="text-sm text-rust">{quote.error}</p>}
+                {quote.status === "idle" && (
+                  <p className="text-xs text-cocoa/55">
+                    Enter your phone and address, then check availability and price before paying.
+                  </p>
+                )}
+                <p className="flex items-center gap-2 text-xs text-cocoa/55">
+                  <Truck size={13} /> Same-day delivery by DoorDash courier. Orders{" "}
+                  {pretty(DELIVERY_HOURS.open)}–{pretty(DELIVERY_HOURS.lastOrder)}, minimum{" "}
+                  {formatPrice(DELIVERY_MIN_ORDER_CENTS / 100)} in pastry, ready in about{" "}
+                  {DELIVERY_PREP_MINUTES} minutes.
+                </p>
+              </fieldset>
+            )}
 
             <fieldset className="space-y-3" disabled={status === "submitting"}>
               <legend className="font-display text-2xl text-cocoa mb-2">
@@ -413,7 +653,10 @@ export default function CheckoutPage() {
 
             <button
               type="submit"
-              disabled={status === "submitting" || !pickupSlot}
+              disabled={
+                status === "submitting" ||
+                (fulfillment === "pickup" ? !pickupSlot : quote.status !== "ok")
+              }
               className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-full bg-cocoa text-cream-50 px-8 py-4 text-sm uppercase tracking-[0.2em] hover:bg-rust transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {status === "submitting" ? (
@@ -471,6 +714,14 @@ export default function CheckoutPage() {
                     </span>
                   </div>
                 )}
+                {fulfillment === "delivery" && (
+                  <div className="flex items-center justify-between text-sm text-cocoa/70">
+                    <span>Delivery (DoorDash)</span>
+                    <span className="tabular-nums">
+                      {quote.status === "ok" ? formatPrice(totals.deliveryFeeCents / 100) : "—"}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-sm text-cocoa/70">
                   <span>Tax ({SALES_TAX_PERCENT}%)</span>
                   <span className="tabular-nums">{formatPrice(totals.taxCents / 100)}</span>
@@ -485,8 +736,10 @@ export default function CheckoutPage() {
                 </div>
               </div>
               <p className="mt-4 text-xs text-cocoa/55 leading-relaxed">
-                Secure card payment on the next step via Clover. Your order
-                will be ready for pick-up at the chosen time.
+                Secure card payment on the next step via Clover.{" "}
+                {fulfillment === "delivery"
+                  ? "A DoorDash courier brings your order; you'll get a tracking link by email."
+                  : "Your order will be ready for pick-up at the chosen time."}
               </p>
             </div>
           </aside>

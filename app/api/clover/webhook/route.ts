@@ -29,6 +29,19 @@ import crypto from "crypto";
 import { products, effectiveCloverItemId } from "@/lib/products";
 import { taxCents } from "@/lib/tax";
 import { checkReward } from "@/lib/passport";
+import { DELIVERY_LINE_NAME, DELIVERY_NOTE_PREFIX, DELIVERY_PREP_MINUTES } from "@/lib/delivery";
+import {
+  DoorDashError,
+  createDelivery,
+  doordashConfigured,
+  formatEtaMaine,
+  getDelivery,
+  type DeliveryResult,
+} from "@/lib/doordash";
+
+// Clover order type for delivery orders (shows on the POS). Found via
+// GET /order_types on 2026-10-17: "Delivery" = 44B1REYFDP9BA.
+const DELIVERY_ORDER_TYPE_ID = process.env.CLOVER_DELIVERY_ORDER_TYPE_ID || "44B1REYFDP9BA";
 
 // Give this route more time than Vercel's default (was silently truncating
 // the webhook mid-execution on slow runs — see [Webhook] timeout note below).
@@ -202,9 +215,11 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function setOrderTypePickup(
   apiToken: string,
   merchantId: string,
-  orderId: string
+  orderId: string,
+  // Delivery orders pass their own type id; pick-up resolves "Pickup".
+  typeId: string | null = null
 ): Promise<boolean> {
-  const pickupTypeId = await getPickupOrderTypeId(apiToken, merchantId);
+  const pickupTypeId = typeId || (await getPickupOrderTypeId(apiToken, merchantId));
   if (!pickupTypeId) return false;
 
   const res = await cloverFetchWithRetry(
@@ -221,7 +236,7 @@ async function setOrderTypePickup(
   );
 
   if (res && res.ok) {
-    console.log(`[Webhook] order ${orderId} set to Pickup type (${pickupTypeId})`);
+    console.log(`[Webhook] order ${orderId} set to order type ${pickupTypeId}`);
     return true;
   }
   const errText = res ? await res.text() : "no response after retries";
@@ -386,22 +401,61 @@ export async function POST(request: NextRequest) {
       `[Webhook] order ${orderId} has ${lineItems.length} line item(s)`
     );
 
+    // Parse the "Key: value | ..." note the checkout wrote on every line item.
+    const firstNote: string = lineItems[0]?.note || "";
+    const noteFields: Record<string, string> = {};
+    for (const part of firstNote.split(" | ")) {
+      const colonIdx = part.indexOf(": ");
+      if (colonIdx > 0) {
+        noteFields[part.slice(0, colonIdx).trim()] = part.slice(colonIdx + 2).trim();
+      }
+    }
+    const isDelivery = firstNote.startsWith(DELIVERY_NOTE_PREFIX);
+    const qtyOf = (li: any) => (li.unitQty >= 1000 ? Math.round(li.unitQty / 1000) : (li.unitQty || 1));
+    const productLines = lineItems.filter((li: any) => li.name !== DELIVERY_LINE_NAME);
+    const itemsSubtotalCents = productLines.reduce((s: number, li: any) => s + (li.price || 0) * qtyOf(li), 0);
+    const deliveryFeeCents = lineItems
+      .filter((li: any) => li.name === DELIVERY_LINE_NAME)
+      .reduce((s: number, li: any) => s + (li.price || 0) * qtyOf(li), 0);
+
+    // ---- DOORDASH: book the courier now that the payment is APPROVED ----
+    // External id = Clover order id, so a retried webhook can't book twice
+    // (DoorDash answers duplicate_delivery_id and we just read it back).
+    let delivery: DeliveryResult | null = null;
+    if (isDelivery) {
+      if (!doordashConfigured()) {
+        console.error(`[DoorDash] order ${orderId} is a DELIVERY but DoorDash is not configured`);
+      } else {
+        try {
+          delivery = await createDelivery({
+            externalId: orderId,
+            dropoffAddress: noteFields["Deliver to"] || "",
+            dropoffName: noteFields["Customer"] || "Customer",
+            dropoffPhone: noteFields["Phone"] || "",
+            dropoffInstructions: noteFields["Delivery notes"] || undefined,
+            orderValueCents: itemsSubtotalCents,
+            items: productLines.map((li: any) => ({ name: li.name, quantity: qtyOf(li) })),
+            pickupTime: new Date(Date.now() + DELIVERY_PREP_MINUTES * 60_000),
+          });
+          console.log(`[DoorDash] delivery booked for ${orderId}: ${delivery.status}, fee ${delivery.feeCents}c, eta ${delivery.dropoffEta}`);
+        } catch (err) {
+          if (err instanceof DoorDashError && err.code === "duplicate_delivery_id") {
+            delivery = await getDelivery(orderId).catch(() => null);
+            console.log(`[DoorDash] delivery already existed for ${orderId}: ${delivery?.status}`);
+          } else {
+            // Paid order with no courier: shout so the shop calls the customer.
+            console.error(`[DoorDash] BOOKING FAILED for paid order ${orderId}:`, err);
+          }
+        }
+      }
+    }
+
     // Send order notification to n8n → email to Edelweiss FIRST, before the
     // slower/rate-limited steps below. This is the most time-critical step
     // for the bakery (they need to know a pickup order came in) — if the
     // function gets cut off by Vercel's execution time limit later on (e.g.
     // Clover 429s during order-type lookup), the email must already be sent.
     try {
-      // Parse pickup note from first line item to extract customer details
-      const firstNote: string = lineItems[0]?.note || "";
-      const noteFields: Record<string, string> = {};
-      for (const part of firstNote.split(" | ")) {
-        const colonIdx = part.indexOf(": ");
-        if (colonIdx > 0) {
-          noteFields[part.slice(0, colonIdx).trim()] = part.slice(colonIdx + 2).trim();
-        }
-      }
-
       const pickupRaw = noteFields["Pick-up"] || "";
       const [pickupDate, pickupTime] = pickupRaw.includes(" at ")
         ? pickupRaw.split(" at ")
@@ -427,16 +481,13 @@ export async function POST(request: NextRequest) {
         pickupDateLabel = `${weekday} · ${pretty}`;
       }
 
-      const itemsSubtotalCents = lineItems.reduce((s: number, li: any) => {
-        const q = li.unitQty >= 1000 ? Math.round(li.unitQty / 1000) : (li.unitQty || 1);
-        return s + (li.price || 0) * q;
-      }, 0);
       // Prefer the real charge from the payment; fall back to our own math.
-      const taxChargedCents = paidTaxCents ?? taxCents(itemsSubtotalCents);
-      const totalChargedCents = paidAmountCents ?? itemsSubtotalCents + taxChargedCents;
-      if (totalChargedCents - taxChargedCents !== itemsSubtotalCents) {
+      const taxableCents = itemsSubtotalCents + deliveryFeeCents;
+      const taxChargedCents = paidTaxCents ?? taxCents(taxableCents);
+      const totalChargedCents = paidAmountCents ?? taxableCents + taxChargedCents;
+      if (totalChargedCents - taxChargedCents !== taxableCents) {
         console.warn(
-          `[Webhook] totals mismatch: items ${itemsSubtotalCents}c + tax ${taxChargedCents}c != paid ${totalChargedCents}c`
+          `[Webhook] totals mismatch: items ${itemsSubtotalCents}c + delivery ${deliveryFeeCents}c + tax ${taxChargedCents}c != paid ${totalChargedCents}c`
         );
       }
 
@@ -448,14 +499,24 @@ export async function POST(request: NextRequest) {
         pickupDate: pickupDateLabel,
         pickupTime: pickupTime.trim(),
         notes: noteFields["Notes"] || "",
-        items: lineItems.map((li: any) => ({
+        items: productLines.map((li: any) => ({
           name: li.name,
-          qty: li.unitQty >= 1000 ? Math.round(li.unitQty / 1000) : (li.unitQty || 1),
-          price: `$${((li.price || 0) / 100).toFixed(2)}`,
+          qty: qtyOf(li),
+          price: `${((li.price || 0) / 100).toFixed(2)}`,
         })),
-        subtotal: `$${(itemsSubtotalCents / 100).toFixed(2)}`,
-        tax: `$${(taxChargedCents / 100).toFixed(2)}`,
-        total: `$${(totalChargedCents / 100).toFixed(2)}`,
+        // Items only (the Swiss Passport stamps read this); fee goes separately.
+        subtotal: `${(itemsSubtotalCents / 100).toFixed(2)}`,
+        deliveryFee: `${(deliveryFeeCents / 100).toFixed(2)}`,
+        tax: `${(taxChargedCents / 100).toFixed(2)}`,
+        total: `${(totalChargedCents / 100).toFixed(2)}`,
+        // Delivery (empty strings on pick-up orders so n8n templates can test them).
+        fulfillment: isDelivery ? "delivery" : "pickup",
+        deliveryAddress: isDelivery ? noteFields["Deliver to"] || "" : "",
+        deliveryNotes: isDelivery ? noteFields["Delivery notes"] || "" : "",
+        courierPickupTime: isDelivery ? pickupTime.trim() : "",
+        trackingUrl: delivery?.trackingUrl || "",
+        deliveryEta: formatEtaMaine(delivery?.dropoffEta ?? null) || "",
+        deliveryStatus: isDelivery ? (delivery ? delivery.status : "BOOKING FAILED - call the customer") : "",
       };
 
       console.log("[Webhook] sending n8n notification:", JSON.stringify(n8nPayload));
@@ -591,7 +652,12 @@ export async function POST(request: NextRequest) {
     // Set order type to "Pickup" — shows on POS.
     // Runs last: it's the slowest, most rate-limited step (Clover 429s on
     // order_types), and email + stock must not depend on it.
-    const pickupSet = await setOrderTypePickup(apiToken, merchantId!, orderId);
+    const pickupSet = await setOrderTypePickup(
+      apiToken,
+      merchantId!,
+      orderId,
+      isDelivery ? DELIVERY_ORDER_TYPE_ID : null
+    );
 
     console.log(
       `[Webhook] done — decremented ${decremented}/${qtyByItem.size} distinct items, pickup=${pickupSet}`
@@ -601,6 +667,7 @@ export async function POST(request: NextRequest) {
       decremented,
       distinctItems: qtyByItem.size,
       pickup: pickupSet,
+      delivery: isDelivery ? delivery?.status || "failed" : undefined,
     });
   } catch (err) {
     console.error("[Webhook] unexpected error:", err);
