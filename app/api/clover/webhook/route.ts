@@ -31,6 +31,7 @@ import { taxCents } from "@/lib/tax";
 import { checkReward } from "@/lib/passport";
 import { DELIVERY_LINE_NAME, DELIVERY_NOTE_PREFIX, DELIVERY_PREP_MINUTES } from "@/lib/delivery";
 import {
+  DOORDASH_ENV,
   DoorDashError,
   createDelivery,
   doordashConfigured,
@@ -422,7 +423,10 @@ export async function POST(request: NextRequest) {
     // External id = Clover order id, so a retried webhook can't book twice
     // (DoorDash answers duplicate_delivery_id and we just read it back).
     let delivery: DeliveryResult | null = null;
-    if (isDelivery) {
+    const manualDispatch = isDelivery && DOORDASH_ENV === "manual";
+    if (manualDispatch) {
+      console.log(`[DoorDash] order ${orderId}: manual mode, staff requests the courier in the Merchant Portal`);
+    } else if (isDelivery) {
       if (!doordashConfigured()) {
         console.error(`[DoorDash] order ${orderId} is a DELIVERY but DoorDash is not configured`);
       } else {
@@ -516,7 +520,13 @@ export async function POST(request: NextRequest) {
         courierPickupTime: isDelivery ? pickupTime.trim() : "",
         trackingUrl: delivery?.trackingUrl || "",
         deliveryEta: formatEtaMaine(delivery?.dropoffEta ?? null) || "",
-        deliveryStatus: isDelivery ? (delivery ? delivery.status : "BOOKING FAILED - call the customer") : "",
+        deliveryStatus: !isDelivery
+          ? ""
+          : manualDispatch
+          ? "MANUAL - request the courier in the DoorDash Merchant Portal"
+          : delivery
+          ? delivery.status
+          : "BOOKING FAILED - call the customer",
       };
 
       console.log("[Webhook] sending n8n notification:", JSON.stringify(n8nPayload));
@@ -667,7 +677,7 @@ export async function POST(request: NextRequest) {
       decremented,
       distinctItems: qtyByItem.size,
       pickup: pickupSet,
-      delivery: isDelivery ? delivery?.status || "failed" : undefined,
+      delivery: !isDelivery ? undefined : manualDispatch ? "manual" : delivery?.status || "failed",
     });
   } catch (err) {
     console.error("[Webhook] unexpected error:", err);

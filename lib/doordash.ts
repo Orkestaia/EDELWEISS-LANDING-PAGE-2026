@@ -22,8 +22,19 @@ import { DELIVERY_PREP_MINUTES } from "./delivery";
 const BASE_URL = "https://openapi.doordash.com/drive/v2";
 const TIMEOUT_MS = 8000;
 
-export const DOORDASH_ENV: "sandbox" | "production" =
-  process.env.DOORDASH_ENV === "production" ? "production" : "sandbox";
+/**
+ * production: real couriers (needs production credentials from DoorDash).
+ * sandbox:    API calls against the simulator; nothing is dispatched.
+ * manual:     quote for price/coverage only; the webhook does NOT book and the
+ *             staff requests the courier in the DoorDash Merchant Portal
+ *             ("Request a delivery"). Launch mode until the API is approved.
+ */
+export const DOORDASH_ENV: "sandbox" | "production" | "manual" =
+  process.env.DOORDASH_ENV === "production"
+    ? "production"
+    : process.env.DOORDASH_ENV === "manual"
+    ? "manual"
+    : "sandbox";
 
 /** The bakery, as DoorDash needs it. */
 export const PICKUP = {
