@@ -21,33 +21,40 @@ export const DELIVERY_LINE_NAME = "Delivery (DoorDash)";
 /** Prefix of the Clover note on delivery orders (pick-up uses ONLINE PICK-UP ORDER). */
 export const DELIVERY_NOTE_PREFIX = "ONLINE DELIVERY ORDER";
 
-// TODO (Valentina): confirm the zone. DoorDash still has the final say: its
-// radius is dynamic, and the quote fails for an address it will not serve.
+// Meeting 2026-10-17: Valentina wants roughly a 10-mile radius around the
+// shop. These are the ZIPs inside it; DoorDash still has the final say (its
+// radius is dynamic, and the quote fails for an address it will not serve).
 export const DELIVERY_ZONES: { zip: string; city: string }[] = [
   { zip: "04005", city: "Biddeford" },
+  { zip: "04005", city: "Dayton" },
   { zip: "04006", city: "Biddeford Pool" },
   { zip: "04072", city: "Saco" },
   { zip: "04064", city: "Old Orchard Beach" },
+  { zip: "04074", city: "Scarborough" },
   { zip: "04043", city: "Kennebunk" },
   { zip: "04046", city: "Kennebunkport" },
   { zip: "04046", city: "Arundel" },
-  { zip: "04074", city: "Scarborough" },
+  { zip: "04002", city: "Lyman" },
+  { zip: "04042", city: "Hollis" },
+  { zip: "04093", city: "Buxton" },
 ];
 
 export const DELIVERY_CITIES = Array.from(new Set(DELIVERY_ZONES.map((z) => z.city)));
 
-// TODO (Valentina): minimum order (items only, before tax and fee).
-export const DELIVERY_MIN_ORDER_CENTS = 2500;
+// Meeting 2026-10-17: minimum order $10 (items only, before tax and fee).
+export const DELIVERY_MIN_ORDER_CENTS = 1000;
 
-// TODO (Valentina): how long the kitchen needs before the courier shows up.
+// How long the kitchen needs before the courier shows up (to confirm with staff).
 export const DELIVERY_PREP_MINUTES = 45;
 
-// TODO (Valentina): when delivery orders are accepted (Maine time, HH:mm).
-// Last order at 12:30 so the courier collects well before the 2pm close.
-export const DELIVERY_HOURS = { open: "08:00", lastOrder: "12:30" } as const;
+// Meeting 2026-10-17: start with ONE delivery window, 9am–12pm. Orders are
+// accepted from 8:30 (courier at ~9:15) until 11:15 (courier at ~12:00).
+// Widen once the first weeks go well.
+export const DELIVERY_HOURS = { open: "08:30", lastOrder: "11:15" } as const;
+export const DELIVERY_WINDOW_LABEL = "9am–12pm";
 
-// TODO (Valentina): products that must not travel (chocolates are not sold
-// online at all, so they never reach here).
+// Products that must not travel. Chocolates are not sold online at all, so
+// they never reach here. Meeting 2026-10-17: everything else on the site is OK.
 export const DELIVERY_EXCLUDED_SLUGS: string[] = [];
 
 /**
