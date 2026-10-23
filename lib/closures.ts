@@ -9,6 +9,8 @@
  * in advance from that date. Without it, the notice only shows on the day.
  */
 
+import { hhmmLabel, hoursForDate } from "./hours";
+
 export type ClosureReason = "illness" | "holiday";
 
 export interface Closure {
@@ -27,6 +29,11 @@ export const CLOSED_DATES: Record<string, Closure> = {
     reason: "holiday",
     label: "Indigenous Peoples' Day",
     noticeFrom: "2026-10-09",
+  },
+  "2026-11-26": {
+    reason: "holiday",
+    label: "Thanksgiving Day",
+    noticeFrom: "2026-11-16",
   },
 };
 
@@ -99,7 +106,7 @@ function describeClosure(date: string, isToday: boolean): ActiveClosure {
     timeZone: "UTC",
     weekday: "long",
   }).format(next);
-  const opens = nextWeekday === "Saturday" || nextWeekday === "Sunday" ? "8:00 am" : "7:00 am";
+  const opens = hhmmLabel(hoursForDate(nextKey).open).replace(/(am|pm)$/, " $1");
   return {
     date,
     closure: CLOSED_DATES[date],

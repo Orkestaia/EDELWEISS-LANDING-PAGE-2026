@@ -3,7 +3,9 @@ export type ProductCategory =
   | "Breads"
   | "Pastries"
   | "Cookies"
-  | "Granola";
+  | "Granola"
+  // Dated pre-order block (lib/thanksgiving.ts); not part of `categories`.
+  | "Thanksgiving";
 
 export type Product = {
   slug: string;
@@ -86,12 +88,13 @@ export const products: Product[] = [
   },
   {
     slug: "brioche-hazelnut",
-    name: "Orange Brioche · Hazelnut Crème",
+    // Renamed in Clover 2026-10 (same item id).
+    name: "Brioche with Chocolate, Orange and Hazelnut",
     category: "Breakfast",
     description:
-      "Buttery orange-scented brioche with milk chocolate and hazelnut pieces.",
+      "Buttery orange-scented brioche with milk chocolate, hazelnut and candied orange pieces.",
     image: "/images/products/brioche.jpg",
-    price: "$5.00",
+    price: "$6.00",
     tag: "Weekend",
     cloverItemId: "X088WXZSZ4A7M",
   },
@@ -256,10 +259,12 @@ export const products: Product[] = [
   },
   {
     slug: "lemon-square",
-    name: "Lemon Square",
+    // Now a round tart (renamed in Clover 2026-10). Photo still shows the old
+    // square until Valentina sends a new one.
+    name: "Lemon Tart",
     category: "Pastries",
     description:
-      "Buttery shortbread base and a vibrant lemon curd, finished with a dusting of sugar.",
+      "Buttery shortbread tart filled with vibrant lemon curd, finished with a dusting of sugar. Pictured as our former square; now baked as a round tart.",
     image: "/images/products/lemon-square.jpg",
     price: "$7.00",
     cloverItemId: "500QB5ZR31DB8",
@@ -274,7 +279,116 @@ export const products: Product[] = [
     price: "$6.00",
     cloverItemId: "G10WYGQM7WQ3A",
   },
-  // (Carrot Cake removed — seasonal item, not sold online per reunión 2026-05-20)
+  {
+    slug: "carrot-cake",
+    name: "Carrot Cake",
+    category: "Pastries",
+    description:
+      "Moist and spiced carrot cake, baked with walnuts and raisins, topped with rich and tangy cream cheese frosting. Allergens: tree nuts, wheat, eggs.",
+    image: "/images/products/carrot-cake.jpg",
+    price: "$9.00",
+    cloverItemId: "6BXC43Z1R6W8R",
+  },
+
+  // --- Thanksgiving 2026 pre-orders (lib/thanksgiving.ts) ---
+  // Separate Clover items ("Thanksgiving ...") so stock never mixes with the
+  // daily bake. Names carry "(Thanksgiving)" where a daily twin exists: the
+  // webhook matches line items to products BY NAME for stock.
+  {
+    slug: "tg-apple-cranberry-tart",
+    name: "Apple & Cranberry Almond Tart 9\"",
+    category: "Thanksgiving",
+    description: "Apples and cranberries over almond cream in a buttery 9-inch tart.",
+    image: "",
+    price: "$35.00",
+    tag: "Pre-order",
+    cloverItemId: "DS451ENN9BTXP",
+  },
+  {
+    slug: "tg-pear-streusel-kuchen",
+    name: "Pear Streusel Kuchen",
+    category: "Thanksgiving",
+    description: "Spiced cake baked with pears and a spiced streusel topping.",
+    image: "",
+    price: "$35.00",
+    tag: "Pre-order",
+    cloverItemId: "4PA2SZV88YM28",
+  },
+  {
+    slug: "tg-pumpkin-tart",
+    name: "Pumpkin Tart 9\"",
+    category: "Thanksgiving",
+    description: "Our new 9-inch pumpkin tart, spiced the Swiss way.",
+    image: "",
+    price: "$35.00",
+    tag: "New",
+    cloverItemId: "JZJ588FAPT830",
+  },
+  {
+    slug: "tg-dinner-rolls",
+    name: "Dinner Rolls (6)",
+    category: "Thanksgiving",
+    description: "Soft milk rolls, six to a bag.",
+    image: "",
+    price: "$7.00",
+    tag: "Pre-order",
+    cloverItemId: "K87AA09380AZC",
+  },
+  {
+    slug: "tg-rosemary-focaccia",
+    name: "Rosemary Focaccia (quarter)",
+    category: "Thanksgiving",
+    description: "A quarter sheet of rosemary focaccia topped with olive oil and sea salt.",
+    image: "/images/products/focaccia.jpg",
+    price: "$10.00",
+    tag: "Pre-order",
+    cloverItemId: "JKNQFTDC6S7CY",
+  },
+  {
+    slug: "tg-plain-croissant",
+    name: "Plain Croissant (Thanksgiving)",
+    category: "Thanksgiving",
+    description: "The classic butter croissant, laminated over three days.",
+    image: "/images/products/butter-croissant.jpg",
+    price: "$4.00",
+    cloverItemId: "49W1RRQBKWZPG",
+  },
+  {
+    slug: "tg-chocolate-croissant",
+    name: "Chocolate Croissant (Thanksgiving)",
+    category: "Thanksgiving",
+    description: "Flaky croissant with two batons of dark chocolate.",
+    image: "/images/products/chocolate-croissant.jpg",
+    price: "$4.50",
+    cloverItemId: "AE36658HVZSQ2",
+  },
+  {
+    slug: "tg-almond-croissant",
+    name: "Almond Croissant (Thanksgiving)",
+    category: "Thanksgiving",
+    description: "Filled with almond cream, baked twice, finished with toasted almonds.",
+    image: "/images/products/almond-croissant.jpg",
+    price: "$6.00",
+    cloverItemId: "X5Z015S6JTP5P",
+  },
+  {
+    slug: "tg-walnut-schnecken",
+    name: "Walnut Schnecken (Thanksgiving)",
+    category: "Thanksgiving",
+    description: "Our Swiss nut spiral, moist and tender, with a vanilla glaze.",
+    image: "/images/products/nuss-schnecken.jpg",
+    price: "$5.50",
+    cloverItemId: "42AZ5H2R5W4GA",
+  },
+  {
+    slug: "tg-blueberry-scone",
+    name: "Blueberry & Lemon Scone (Thanksgiving)",
+    category: "Thanksgiving",
+    description: "Buttery scone studded with Maine blueberries and brightened with candied lemon.",
+    image: "/images/products/blueberry-scone.jpg",
+    price: "$4.00",
+    cloverItemId: "57SSY9YZHGTVW",
+  },
 
   // --- Cookies ---
   {
@@ -349,4 +463,6 @@ export const categoryDescriptions: Record<ProductCategory, string> = {
     "Buttery, spiced, jam-filled — the snacking tradition of every Swiss kitchen.",
   Granola:
     "Toasted oats, nuts and dried fruit — perfect with yogurt, milk or by the handful.",
+  Thanksgiving:
+    "Pre-order for pick-up on Thanksgiving Eve: large desserts, breads and breakfast pastries.",
 };

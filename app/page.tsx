@@ -15,12 +15,14 @@ import { SignupPopup } from "@/components/SignupPopup";
 import { HolidayNotice } from "@/components/HolidayNotice";
 import { MondayNotice } from "@/components/MondayNotice";
 import { ClosureNotice } from "@/components/ClosureNotice";
+import { ThanksgivingSection } from "@/components/ThanksgivingSection";
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-cream-50">
       <Navbar />
       <Hero />
+      <ThanksgivingSection />
       <Showcase />
       <Newsletter />
       <DrinkBanner />

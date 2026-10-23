@@ -9,7 +9,9 @@ import { Footer } from "@/components/Footer";
 import { useCart, formatPrice } from "@/lib/cart";
 import { trackBeginCheckout } from "@/lib/analytics";
 import { cartTotals, SALES_TAX_PERCENT } from "@/lib/tax";
-import { isClosedDate } from "@/lib/closures";
+import { isClosedDate, maineToday } from "@/lib/closures";
+import { SPECIAL_HOURS, hoursLabel, pickupSlotsForDate, longDateLabel } from "@/lib/hours";
+import { THANKSGIVING, cartHasThanksgiving } from "@/lib/thanksgiving";
 import {
   DELIVERY_CITIES,
   DELIVERY_ENABLED,
@@ -52,19 +54,9 @@ function buildPickupDates() {
   return out;
 }
 
-const JULY4_DATE = "2026-07-04";
-// Aug 4 & 11, 2026 (two Tuesdays): short-staffed, open at 8am instead of 7am.
-const OPEN_8AM_DATES = new Set(["2026-08-04", "2026-08-11"]);
 
-function slotsForDate(dateValue: string, weekday: number) {
-  let start = weekday === 0 || weekday === 6 ? 8 : 7;
-  // These dates open at 8am, so drop the 7am pick-up slot.
-  if (OPEN_8AM_DATES.has(dateValue)) start = 8;
-  // July 4th closes at noon — last slot is 11:00 (pickup by 12pm).
-  const end = dateValue === JULY4_DATE ? 11 : 13;
-  const slots: string[] = [];
-  for (let h = start; h <= end; h++) slots.push(`${String(h).padStart(2, "0")}:00`);
-  return slots;
+function slotsForDate(dateValue: string, _weekday: number) {
+  return pickupSlotsForDate(dateValue);
 }
 
 function slotLabel(slot: string) {
@@ -105,22 +97,28 @@ export default function CheckoutPage() {
   const [deliveryInstructions, setDeliveryInstructions] = useState("");
   const [quote, setQuote] = useState<Quote>({ status: "idle" });
   const resetQuote = () => setQuote((q) => (q.status === "idle" ? q : { status: "idle" }));
+  // Thanksgiving pre-orders: everything in the cart is picked up on the fixed
+  // day, no delivery. The server enforces the same rules.
+  const tgCart = cartHasThanksgiving(items);
+  const effectiveFulfillment: Fulfillment = tgCart ? "pickup" : fulfillment;
   const totals = cartTotals(
     items,
     reward?.percent ?? 0,
-    fulfillment === "delivery" && quote.status === "ok" ? quote.customerFeeCents : 0
+    effectiveFulfillment === "delivery" && quote.status === "ok" ? quote.customerFeeCents : 0
   );
   const [phone, setPhone] = useState("");
   const [pickupDate, setPickupDate] = useState(dates[0]?.value ?? "");
   const [pickupSlot, setPickupSlot] = useState("");
+  const effectivePickupDate = tgCart ? THANKSGIVING.pickupDate : pickupDate;
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
 
   const slots = useMemo(() => {
-    const entry = dates.find((d) => d.value === pickupDate);
-    return slotsForDate(pickupDate, entry?.weekday ?? 2);
-  }, [pickupDate, dates]);
+    const entry = dates.find((d) => d.value === effectivePickupDate);
+    return slotsForDate(effectivePickupDate, entry?.weekday ?? 2);
+  }, [effectivePickupDate, dates]);
+  const specialHours = SPECIAL_HOURS[effectivePickupDate];
 
   async function applyReward() {
     setRewardError(null);
@@ -196,8 +194,8 @@ export default function CheckoutPage() {
             quantity: i.quantity,
           })),
           customer: { name: name.trim(), email: email.trim(), phone: phone.trim() },
-          fulfillment,
-          ...(fulfillment === "delivery"
+          fulfillment: effectiveFulfillment,
+          ...(effectiveFulfillment === "delivery"
             ? {
                 delivery: {
                   street: street.trim(),
@@ -207,7 +205,7 @@ export default function CheckoutPage() {
                   instructions: deliveryInstructions.trim(),
                 },
               }
-            : { pickupDate, pickupSlot }),
+            : { pickupDate: effectivePickupDate, pickupSlot }),
           notes: notes.trim(),
           ...(reward ? { rewardCode: reward.code } : {}),
         }),
@@ -228,9 +226,9 @@ export default function CheckoutPage() {
         JSON.stringify({
           name: name.trim(),
           email: email.trim(),
-          pickupDate: data.pickup?.date ?? pickupDate,
+          pickupDate: data.pickup?.date ?? effectivePickupDate,
           pickupSlot: data.pickup?.slot ?? pickupSlot,
-          fulfillment: data.fulfillment ?? fulfillment,
+          fulfillment: data.fulfillment ?? effectiveFulfillment,
           deliveryAddress: data.delivery?.address,
           readyAt: data.delivery?.readyAt,
           etaDropoff: data.delivery?.etaDropoff,
@@ -297,7 +295,12 @@ export default function CheckoutPage() {
           <ArrowLeft size={15} /> Back to the menu
         </Link>
         <h1 className="mt-5 font-display text-4xl sm:text-5xl text-cocoa leading-[1.05]">
-          {fulfillment === "delivery" ? (
+          {tgCart ? (
+            <>
+              Your Thanksgiving
+              <span className="italic text-rust"> pre-order.</span>
+            </>
+          ) : fulfillment === "delivery" ? (
             <>
               Fresh pastry,
               <span className="italic text-forest"> delivered.</span>
@@ -348,10 +351,10 @@ export default function CheckoutPage() {
                     placeholder="jane@inbox.com"
                   />
                 </Field>
-                <Field label="Phone" required={fulfillment === "delivery"}>
+                <Field label="Phone" required={effectiveFulfillment === "delivery"}>
                   <input
                     type="tel"
-                    required={fulfillment === "delivery"}
+                    required={effectiveFulfillment === "delivery"}
                     value={phone}
                     onChange={(e) => {
                       setPhone(e.target.value);
@@ -364,7 +367,18 @@ export default function CheckoutPage() {
               </div>
             </fieldset>
 
-            {DELIVERY_ENABLED && (
+            {tgCart && (
+              <div className="rounded-2xl border border-rust/30 bg-rust/5 px-5 py-4 text-sm text-cocoa">
+                <p className="font-display text-xl text-cocoa">Thanksgiving pre-order</p>
+                <p className="mt-1 text-cocoa/75">
+                  Everything in this order is picked up on{" "}
+                  <strong>{longDateLabel(THANKSGIVING.pickupDate)}</strong>, {specialHours ? hoursLabel(specialHours) : "8am – 3pm"}.
+                  Pick-up only; choose your time below. Loyalty points can only be redeemed in person.
+                </p>
+              </div>
+            )}
+
+            {DELIVERY_ENABLED && !tgCart && (
               <fieldset className="space-y-3" disabled={status === "submitting"}>
                 <legend className="font-display text-2xl text-cocoa mb-2">
                   How would you like it?
@@ -400,28 +414,37 @@ export default function CheckoutPage() {
               </fieldset>
             )}
 
-            {fulfillment === "pickup" && (
+            {effectiveFulfillment === "pickup" && (
             <fieldset className="space-y-4" disabled={status === "submitting"}>
               <legend className="font-display text-2xl text-cocoa mb-2">
                 Pick-up time
               </legend>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Date" required>
-                  <select
-                    required
-                    value={pickupDate}
-                    onChange={(e) => {
-                      setPickupDate(e.target.value);
-                      setPickupSlot("");
-                    }}
-                    className="cf-input"
-                  >
-                    {dates.map((d) => (
-                      <option key={d.value} value={d.value}>
-                        {d.label}
-                      </option>
-                    ))}
-                  </select>
+                  {tgCart ? (
+                    <input
+                      type="text"
+                      readOnly
+                      value={longDateLabel(THANKSGIVING.pickupDate)}
+                      className="cf-input bg-cream-100 text-cocoa/70"
+                    />
+                  ) : (
+                    <select
+                      required
+                      value={pickupDate}
+                      onChange={(e) => {
+                        setPickupDate(e.target.value);
+                        setPickupSlot("");
+                      }}
+                      className="cf-input"
+                    >
+                      {dates.map((d) => (
+                        <option key={d.value} value={d.value}>
+                          {d.label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </Field>
                 <Field label="Time" required>
                   <select
@@ -450,14 +473,9 @@ export default function CheckoutPage() {
                   placeholder="Allergies, a specific time inside the hour, a message…"
                 />
               </Field>
-              {pickupDate === JULY4_DATE && (
+              {specialHours && !tgCart && (
                 <div className="rounded-xl border border-mustard/40 bg-mustard/10 px-4 py-3 text-sm text-cocoa">
-                  🎆 <strong>July 4th special hours:</strong> we close at noon. Last pick-up slot is 11:00 AM.
-                </div>
-              )}
-              {OPEN_8AM_DATES.has(pickupDate) && (
-                <div className="rounded-xl border border-mustard/40 bg-mustard/10 px-4 py-3 text-sm text-cocoa">
-                  ⏰ <strong>Special hours:</strong> we open at 8 AM on this date, so the earliest pick-up is 8:00 AM.
+                  ⏰ <strong>{specialHours.label}:</strong> special hours {hoursLabel(specialHours)} on this date.
                 </div>
               )}
               <p className="flex items-center gap-2 text-xs text-cocoa/55">
@@ -467,7 +485,7 @@ export default function CheckoutPage() {
             </fieldset>
             )}
 
-            {fulfillment === "delivery" && (
+            {effectiveFulfillment === "delivery" && (
               <fieldset className="space-y-4" disabled={status === "submitting"}>
                 <legend className="font-display text-2xl text-cocoa mb-2">
                   Delivery address
@@ -656,7 +674,7 @@ export default function CheckoutPage() {
               type="submit"
               disabled={
                 status === "submitting" ||
-                (fulfillment === "pickup" ? !pickupSlot : quote.status !== "ok")
+                (effectiveFulfillment === "pickup" ? !pickupSlot : quote.status !== "ok")
               }
               className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-full bg-cocoa text-cream-50 px-8 py-4 text-sm uppercase tracking-[0.2em] hover:bg-rust transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -715,7 +733,7 @@ export default function CheckoutPage() {
                     </span>
                   </div>
                 )}
-                {fulfillment === "delivery" && (
+                {effectiveFulfillment === "delivery" && (
                   <div className="flex items-center justify-between text-sm text-cocoa/70">
                     <span>Delivery (DoorDash)</span>
                     <span className="tabular-nums">
@@ -738,8 +756,10 @@ export default function CheckoutPage() {
               </div>
               <p className="mt-4 text-xs text-cocoa/55 leading-relaxed">
                 Secure card payment on the next step via Clover.{" "}
-                {fulfillment === "delivery"
+                {effectiveFulfillment === "delivery"
                   ? "A DoorDash courier brings your order; you'll get a tracking link by email."
+                  : tgCart
+                  ? `Your Thanksgiving order will be ready on ${longDateLabel(THANKSGIVING.pickupDate)} at the chosen time.`
                   : "Your order will be ready for pick-up at the chosen time."}
               </p>
             </div>

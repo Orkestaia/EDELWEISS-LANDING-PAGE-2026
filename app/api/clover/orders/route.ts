@@ -41,6 +41,8 @@ import {
   normalizeZip,
 } from "@/lib/delivery";
 import { createQuote, doordashConfigured, formatEtaMaine, friendlyDoorDashError, toE164 } from "@/lib/doordash";
+import { pickupSlotsForDate } from "@/lib/hours";
+import { THANKSGIVING, cartHasThanksgiving, thanksgivingOpen } from "@/lib/thanksgiving";
 
 const isSandbox = process.env.NEXT_PUBLIC_ENV === "sandbox";
 const CLOVER_API_URL = isSandbox
@@ -109,6 +111,18 @@ function validate(body: any): { valid: boolean; error?: string } {
   if (!c?.email || !EMAIL_RE.test(c.email)) {
     return { valid: false, error: "Please enter a valid email address." };
   }
+  // Thanksgiving pre-orders: fixed pick-up day, within the order window, no delivery.
+  if (cartHasThanksgiving(body.items as OrderItem[])) {
+    if (!thanksgivingOpen(maineToday())) {
+      return { valid: false, error: "Thanksgiving pre-orders are closed. Please remove those items." };
+    }
+    if (body.fulfillment === "delivery") {
+      return { valid: false, error: "Thanksgiving pre-orders are pick-up only." };
+    }
+    if (body.pickupDate !== THANKSGIVING.pickupDate) {
+      return { valid: false, error: "Thanksgiving pre-orders are picked up on Wednesday, November 25." };
+    }
+  }
   if (body.fulfillment === "delivery") {
     if (!DELIVERY_ENABLED) return { valid: false, error: "Delivery isn't available yet." };
     const d = body.delivery || {};
@@ -135,7 +149,7 @@ function validate(body: any): { valid: boolean; error?: string } {
   if (!body.pickupDate || !body.pickupSlot) {
     return { valid: false, error: "Please choose a pick-up date and time." };
   }
-  if (!ALLOWED_SLOTS.includes(body.pickupSlot)) {
+  if (!ALLOWED_SLOTS.includes(body.pickupSlot) && !pickupSlotsForDate(String(body.pickupDate)).includes(body.pickupSlot)) {
     return { valid: false, error: "That pick-up time is not available." };
   }
   // Mediodía UTC evita líos de DST al parsear la fecha.
@@ -150,24 +164,9 @@ function validate(body: any): { valid: boolean; error?: string } {
       error: "Sorry, we are closed that day. Please choose another pick-up date.",
     };
   }
-  // July 4th 2026: special hours 8am–12pm. Last pick-up slot is 11:00.
-  if (body.pickupDate === "2026-07-04" && body.pickupSlot > "11:00") {
-    return {
-      valid: false,
-      error:
-        "We close at noon on July 4th. Please select a pick-up time of 11:00 AM or earlier.",
-    };
-  }
-  // Aug 4 & 11, 2026: short-staffed, open at 8am. No 7:00 pick-up those days.
-  if (
-    (body.pickupDate === "2026-08-04" || body.pickupDate === "2026-08-11") &&
-    body.pickupSlot < "08:00"
-  ) {
-    return {
-      valid: false,
-      error:
-        "We open at 8:00 AM on this date. Please select a pick-up time of 8:00 AM or later.",
-    };
+  // Special hours (lib/hours.ts): the slot must exist for that date.
+  if (!pickupSlotsForDate(body.pickupDate).includes(body.pickupSlot)) {
+    return { valid: false, error: "That pick-up time is not available on this date." };
   }
   // No permitir fechas pasadas (comparación de cadenas YYYY-MM-DD).
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -349,6 +348,7 @@ export async function POST(request: NextRequest) {
       `Email: ${customer.email}`,
       `Pick-up: ${pickupDate} at ${pickupSlot}`,
       `Phone: ${customer.phone ? clean(customer.phone) : "—"}`,
+      cartHasThanksgiving(items) ? "Event: Thanksgiving pre-order" : null,
       isDelivery ? `Deliver to: ${clean(deliveryAddress)}` : null,
       isDelivery && deliveryInstructions ? `Delivery notes: ${clean(deliveryInstructions)}` : null,
       notes ? `Notes: ${clean(notes)}` : null,
