@@ -62,8 +62,11 @@ export type CustomerFeeRule =
   | { mode: "flat"; cents: number }
   | { mode: "split"; customerCents: number };
 
-// TODO (Valentina): decide. Passthrough until then.
-export const CUSTOMER_FEE_RULE: CustomerFeeRule = { mode: "passthrough" };
+// Contract (Drive On-Demand Fulfillment Agreement, signed 2026-10-17): flat
+// $7.99 per Small Order delivery, billed to the bakery. The customer pays that
+// same flat amount until Valentina decides otherwise (sandbox quotes say
+// $9.75, but production billing follows the contract).
+export const CUSTOMER_FEE_RULE: CustomerFeeRule = { mode: "flat", cents: 799 };
 
 export function customerDeliveryFeeCents(quotedCents: number): number {
   switch (CUSTOMER_FEE_RULE.mode) {
