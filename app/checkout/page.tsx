@@ -16,6 +16,7 @@ import {
   DELIVERY_HOURS,
   DELIVERY_MIN_ORDER_CENTS,
   DELIVERY_PREP_MINUTES,
+  DELIVERY_WINDOW_LABEL,
   normalizeZip,
   pretty,
 } from "@/lib/delivery";
@@ -392,7 +393,7 @@ export default function CheckoutPage() {
                       <Truck size={16} /> <span className="font-display text-xl">Delivery</span>
                     </span>
                     <span className="block mt-1 text-xs text-cocoa/60">
-                      Same day, by DoorDash courier. From {pretty(DELIVERY_HOURS.open)} to {pretty(DELIVERY_HOURS.lastOrder)}.
+                      Same day, by DoorDash courier. Deliveries {DELIVERY_WINDOW_LABEL}.
                     </span>
                   </button>
                 </div>
@@ -570,9 +571,9 @@ export default function CheckoutPage() {
                   </p>
                 )}
                 <p className="flex items-center gap-2 text-xs text-cocoa/55">
-                  <Truck size={13} /> Same-day delivery by DoorDash courier. Orders{" "}
-                  {pretty(DELIVERY_HOURS.open)}–{pretty(DELIVERY_HOURS.lastOrder)}, minimum{" "}
-                  {formatPrice(DELIVERY_MIN_ORDER_CENTS / 100)} in pastry, ready in about{" "}
+                  <Truck size={13} /> Same-day delivery by DoorDash courier, {DELIVERY_WINDOW_LABEL}. Order
+                  between {pretty(DELIVERY_HOURS.open)} and {pretty(DELIVERY_HOURS.lastOrder)}; minimum{" "}
+                  {formatPrice(DELIVERY_MIN_ORDER_CENTS / 100)} in pastry; ready in about{" "}
                   {DELIVERY_PREP_MINUTES} minutes.
                 </p>
               </fieldset>
