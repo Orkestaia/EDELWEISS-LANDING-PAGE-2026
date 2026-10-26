@@ -5,6 +5,7 @@ import { useReducedMotion } from "framer-motion";
 import { CalendarDays, Clock, Phone, Leaf } from "lucide-react";
 import { Reveal } from "./Reveal";
 import { ProductCard } from "./ProductCard";
+import { FallingLeaves } from "./FallingLeaves";
 import { useInventory } from "@/lib/inventory";
 import { maineToday } from "@/lib/closures";
 import { hoursForDate, hoursLabel, longDateLabel } from "@/lib/hours";
@@ -39,6 +40,7 @@ export function ThanksgivingSection() {
       {/* Autumn wash + leaves */}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-mustard/20 via-transparent to-rust/10" />
       <LeafScatter />
+      <FallingLeaves density={1} />
 
       <div className="relative mx-auto max-w-7xl px-5 sm:px-8 py-20 sm:py-28">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-end">

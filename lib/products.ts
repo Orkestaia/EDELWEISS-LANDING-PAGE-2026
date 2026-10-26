@@ -21,6 +21,8 @@ export type Product = {
   /** Optional Clover item ID in the Test Merchant sandbox.
    *  Only set on items we've replicated in the sandbox for testing. */
   cloverItemIdSandbox?: string;
+  /** "cover" for styled, full-frame photos (dark backgrounds); default "contain" for cut-outs on cream. */
+  imageFit?: "cover" | "contain";
 };
 
 /** Returns the right Clover item ID for the active environment.
@@ -299,7 +301,8 @@ export const products: Product[] = [
     name: "Apple & Cranberry Almond Tart 9\"",
     category: "Thanksgiving",
     description: "Apples and cranberries over almond cream in a buttery 9-inch tart.",
-    image: "",
+    image: "/images/thanksgiving/apple-cranberry-tart.jpg",
+    imageFit: "cover",
     price: "$35.00",
     tag: "Pre-order",
     cloverItemId: "DS451ENN9BTXP",
@@ -309,7 +312,8 @@ export const products: Product[] = [
     name: "Pear Streusel Kuchen",
     category: "Thanksgiving",
     description: "Spiced cake baked with pears and a spiced streusel topping.",
-    image: "",
+    image: "/images/thanksgiving/pear-streusel-kuchen.jpg",
+    imageFit: "cover",
     price: "$35.00",
     tag: "Pre-order",
     cloverItemId: "4PA2SZV88YM28",
@@ -329,7 +333,8 @@ export const products: Product[] = [
     name: "Dinner Rolls (6)",
     category: "Thanksgiving",
     description: "Soft milk rolls, six to a bag.",
-    image: "",
+    image: "/images/thanksgiving/dinner-rolls.jpg",
+    imageFit: "cover",
     price: "$7.00",
     tag: "Pre-order",
     cloverItemId: "K87AA09380AZC",

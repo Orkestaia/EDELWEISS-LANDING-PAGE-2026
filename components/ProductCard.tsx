@@ -66,7 +66,9 @@ export function ProductCard({
               alt={p.name}
               fill
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-              className={`object-contain p-5 transition-transform duration-[1200ms] ease-out group-hover:scale-[1.04] ${
+              className={`${
+                p.imageFit === "cover" ? "object-cover" : "object-contain p-5"
+              } transition-transform duration-[1200ms] ease-out group-hover:scale-[1.04] ${
                 soldOut ? "grayscale" : ""
               }`}
             />
