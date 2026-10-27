@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useReducedMotion } from "framer-motion";
+import { MAPLE_LEAF_MARKUP, MAPLE_LEAF_VIEWBOX } from "./mapleLeaf";
 
 /**
  * Gently falling autumn leaves, pure CSS (transform-only keyframes, no canvas,
@@ -9,7 +10,11 @@ import { useReducedMotion } from "framer-motion";
  * parent. Honours prefers-reduced-motion (renders nothing) and stays light:
  * a dozen leaves on desktop, fewer on phones.
  *
- * `density` 0.5–1.5 scales the number of leaves; `tone` picks the palette.
+ * The leaf itself is the maple leaf from the LottieFiles animation Aitor picked
+ * (2026-10-27), extracted as one <symbol> (fill + veins) and reused by every
+ * leaf via <use>, so the markup cost is paid once, not 14 times.
+ *
+ * `density` 0.5–1.5 scales the number of leaves.
  */
 export function FallingLeaves({
   density = 1,
@@ -27,7 +32,7 @@ export function FallingLeaves({
     const rnd = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
     return Array.from({ length: count }, (_, i) => ({
       left: `${Math.round(rnd() * 100)}%`,
-      size: 14 + Math.round(rnd() * 16),
+      size: 18 + Math.round(rnd() * 22),
       duration: 11 + rnd() * 10,
       delay: -rnd() * 20,
       sway: 2.5 + rnd() * 3,
@@ -51,6 +56,10 @@ export function FallingLeaves({
         .leaf-spin { animation: leaf-spin var(--spin) linear var(--delay) infinite; }
         @media (max-width: 640px) { .leaf-fall:nth-child(n+8) { display: none; } }
       `}</style>
+      {/* One hidden definition of the leaf; every falling leaf references it. */}
+      <svg width="0" height="0" className="absolute" aria-hidden="true">
+        <symbol id="maple-leaf" viewBox={MAPLE_LEAF_VIEWBOX} dangerouslySetInnerHTML={{ __html: MAPLE_LEAF_MARKUP }} />
+      </svg>
       {leaves.map((l, i) => (
         <div
           key={i}
@@ -66,17 +75,14 @@ export function FallingLeaves({
           }}
         >
           <div className="leaf-sway">
-            <svg className="leaf-spin" viewBox="0 0 64 64" width={l.size} height={l.size} fill={l.color}>
-              {i % 3 === 0 ? (
-                // maple
-                <path d="M32 4c2 8 6 12 12 14-4 2-6 4-6 8 6-1 10 1 14 6-5 1-8 3-9 7 4 2 7 5 8 10-5-2-9-2-13 0 1 5 0 9-2 13-2-4-3-8-2-13-4 2-8 2-13 0 1-5 4-8 8-10-1-4-4-6-9-7 4-5 8-7 14-6 0-4-2-6-6-8 6-2 10-6 12-14z" />
-              ) : i % 3 === 1 ? (
-                // oak
-                <path d="M32 6c5 3 7 8 6 13 5-1 9 1 11 5-4 2-6 5-5 9 5 1 8 4 9 8-5 1-8 4-9 8 3 3 4 7 2 11-5-1-9 0-12 3-3-3-7-4-12-3-2-4-1-8 2-11-1-4-4-7-9-8 1-4 4-7 9-8 1-4-1-7-5-9 2-4 6-6 11-5-1-5 1-10 6-13z" />
-              ) : (
-                // simple leaf with stem
-                <path d="M34 4C14 10 6 26 10 48c14-2 26-12 30-30 2 10-2 20-10 30 10-8 16-20 14-34-2-6-6-9-10-10zM30 24l-10 26 2 1 10-26z" />
-              )}
+            <svg
+              className="leaf-spin"
+              viewBox={MAPLE_LEAF_VIEWBOX}
+              width={l.size}
+              height={l.size}
+              style={{ color: l.color }}
+            >
+              <use href="#maple-leaf" />
             </svg>
           </div>
         </div>
