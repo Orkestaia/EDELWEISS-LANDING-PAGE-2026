@@ -180,10 +180,20 @@ export function Visit() {
                           {closure.backOn}.
                         </>
                       )
-                    ) : (
+                    ) : closure.closure.reason === "illness" ? (
                       <>
                         For health reasons the bakery is <strong>closed today</strong>{" "}
                         and there are no pick-ups. Thank you for understanding!
+                      </>
+                    ) : closure.isToday ? (
+                      <>
+                        The bakery is <strong>closed today</strong> and there are no
+                        pick-ups. Sorry for the inconvenience; back {closure.backOn}.
+                      </>
+                    ) : (
+                      <>
+                        We&apos;re <strong>closed on {closure.longDate}</strong>. No pick-ups
+                        that day, sorry for the inconvenience; back {closure.backOn}.
                       </>
                     )}
                   </p>
