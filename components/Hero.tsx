@@ -19,9 +19,10 @@ import { AlpinePeaks } from "./AlpineBackground";
  *             translucent backdrop), so copy stays primary and readable.
  *             Scroll cross-fades the whole croissant into the cut one.
  *   DESKTOP : copy on the left, a centre croissant on the right with five
- *             signature products floating around it. Photos use the classic
- *             multiply blend trick so their white studio backgrounds disappear
- *             into the cream paper — no boxy white edges. Amplified floaty.
+ *             signature products floating around it. Since 2026-10-26 the
+ *             photos are real cut-outs (WebP with alpha, backgrounds removed
+ *             with Higgsfield) in public/images/hero/, so no blend tricks and
+ *             no grey boxes; a soft drop shadow seats them on the paper.
  */
 
 interface FloatingItem {
@@ -35,7 +36,7 @@ interface FloatingItem {
 
 const floatingProducts: FloatingItem[] = [
   {
-    src: "/images/products/nuss-schnecken.jpg",
+    src: "/images/hero/nuss-schnecken.webp",
     alt: "Nuss Schnecken — Swiss nut spiral",
     pos: "top-[1%] left-[-6%] w-[22%] sm:w-[19%] lg:w-[21%]",
     delay: 0,
@@ -43,15 +44,15 @@ const floatingProducts: FloatingItem[] = [
     rotate: -6,
   },
   {
-    src: "/images/chocolates/truffle-trio.jpg",
-    alt: "Swiss chocolate truffles",
+    src: "/images/hero/creme-puff.webp",
+    alt: "Chocolate-glazed cream puff",
     pos: "top-[0%] right-[-5%] w-[28%] sm:w-[23%] lg:w-[23%]",
     delay: 1.2,
     duration: 8.4,
     rotate: 5,
   },
   {
-    src: "/images/products/almond-croissant.jpg",
+    src: "/images/hero/almond-croissant.webp",
     alt: "Almond croissant",
     pos: "top-[44%] left-[-9%] w-[26%] sm:w-[21%] lg:w-[20%]",
     delay: 2.0,
@@ -59,7 +60,7 @@ const floatingProducts: FloatingItem[] = [
     rotate: -4,
   },
   {
-    src: "/images/products/berliner.jpg",
+    src: "/images/hero/berliner.webp",
     alt: "Berliner — raspberry-filled doughnut",
     pos: "bottom-[5%] right-[-4%] w-[24%] sm:w-[19%] lg:w-[19%]",
     delay: 0.6,
@@ -67,8 +68,8 @@ const floatingProducts: FloatingItem[] = [
     rotate: 7,
   },
   {
-    src: "/images/products/spitzbub.jpg",
-    alt: "Spitzbub — Swiss raspberry shortbread",
+    src: "/images/hero/fruit-danish.webp",
+    alt: "Blueberry fruit danish",
     pos: "hidden sm:block bottom-[11%] left-[3%] w-[14%] sm:w-[13%] lg:w-[14%]",
     delay: 1.8,
     duration: 6.8,
@@ -104,12 +105,12 @@ export function Hero() {
           className="absolute inset-0"
         >
           <Image
-            src="/images/products/hero-croissant-whole.jpg"
+            src="/images/hero/hero-croissant-whole.webp"
             alt=""
             fill
             priority
             sizes="100vw"
-            className="object-contain object-center mix-blend-multiply"
+            className="object-contain object-center"
           />
         </motion.div>
         <motion.div
@@ -117,11 +118,11 @@ export function Hero() {
           className="absolute inset-0"
         >
           <Image
-            src="/images/products/hero-croissant-cut.jpg"
+            src="/images/hero/hero-croissant-cut.webp"
             alt=""
             fill
             sizes="100vw"
-            className="object-contain object-center mix-blend-multiply"
+            className="object-contain object-center"
           />
         </motion.div>
         {/* Soft cream wash to keep text legible */}
@@ -232,8 +233,7 @@ export function Hero() {
                 className="absolute inset-[14%] rounded-full bg-mustard/25 blur-3xl"
               />
 
-              {/* Centre piece: cut croissant. mix-blend-multiply kills the
-                  white studio background against the cream paper. */}
+              {/* Centre piece: cut croissant, real cut-out with a soft shadow. */}
               <motion.div
                 initial={{ opacity: 0, scale: reduce ? 1 : 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -246,18 +246,18 @@ export function Hero() {
                   }`}
                 >
                   <Image
-                    src="/images/products/hero-croissant-cut.jpg"
+                    src="/images/hero/hero-croissant-cut.webp"
                     alt="Hand-laminated butter croissant cut open to reveal honeycomb crumb and dozens of buttery layers"
                     fill
                     priority
                     sizes="40vw"
-                    className="object-contain mix-blend-multiply"
+                    className="object-contain drop-shadow-[0_28px_40px_rgba(74,59,50,0.28)]"
                   />
                 </div>
               </motion.div>
 
-              {/* Floating products around the centre — wider float amplitude
-                  and same multiply blend so they sit naturally on cream */}
+              {/* Floating products around the centre — cut-outs with a lighter
+                  shadow so they read as sitting above the paper */}
               {floatingProducts.map((p, i) => (
                 <motion.div
                   key={p.src + i}
@@ -287,7 +287,7 @@ export function Hero() {
                       alt={p.alt}
                       fill
                       sizes="(max-width: 1024px) 30vw, 15vw"
-                      className="object-contain mix-blend-multiply"
+                      className="object-contain drop-shadow-[0_16px_24px_rgba(74,59,50,0.22)]"
                     />
                   </div>
                 </motion.div>

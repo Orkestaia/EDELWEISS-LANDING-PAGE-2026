@@ -54,7 +54,10 @@ export function discountedUnitCents(priceCents: number, discountPercent: number)
  */
 export function cartTotals(
   items: { price: number; quantity: number }[],
-  discountPercent = 0
+  discountPercent = 0,
+  // One more taxable line (Maine taxes delivery charges arranged by the
+  // seller); Clover aggregates lines sharing one rate before rounding.
+  deliveryFeeCents = 0
 ) {
   const originalSubtotalCents = items.reduce(
     (sum, it) => sum + toCents(it.price) * it.quantity,
@@ -64,12 +67,14 @@ export function cartTotals(
     (sum, it) => sum + discountedUnitCents(toCents(it.price), discountPercent) * it.quantity,
     0
   );
-  const tax = taxCents(subtotalCents);
+  const taxableCents = subtotalCents + deliveryFeeCents;
+  const tax = taxCents(taxableCents);
   return {
     originalSubtotalCents,
     discountCents: originalSubtotalCents - subtotalCents,
     subtotalCents,
+    deliveryFeeCents,
     taxCents: tax,
-    totalCents: subtotalCents + tax,
+    totalCents: taxableCents + tax,
   };
 }

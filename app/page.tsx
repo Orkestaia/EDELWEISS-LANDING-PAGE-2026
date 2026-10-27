@@ -13,14 +13,16 @@ import { Footer } from "@/components/Footer";
 import { NewsletterModal } from "@/components/NewsletterModal";
 import { SignupPopup } from "@/components/SignupPopup";
 import { HolidayNotice } from "@/components/HolidayNotice";
-import { MondayNotice } from "@/components/MondayNotice";
 import { ClosureNotice } from "@/components/ClosureNotice";
+import { ThanksgivingSection } from "@/components/ThanksgivingSection";
+import { SeasonalLeaves } from "@/components/SeasonalLeaves";
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-cream-50">
       <Navbar />
       <Hero />
+      <ThanksgivingSection />
       <Showcase />
       <Newsletter />
       <DrinkBanner />
@@ -34,8 +36,8 @@ export default function Home() {
       <NewsletterModal />
       <SignupPopup />
       <HolidayNotice />
-      <MondayNotice />
       <ClosureNotice />
+      <SeasonalLeaves />
     </main>
   );
 }

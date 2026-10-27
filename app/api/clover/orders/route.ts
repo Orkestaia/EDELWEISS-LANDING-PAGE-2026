@@ -25,7 +25,24 @@ import { NextRequest, NextResponse } from "next/server";
 import { products, effectiveCloverItemId } from "@/lib/products";
 import { SALES_TAX, cartTotals, discountedUnitCents, toCents } from "@/lib/tax";
 import { checkReward, normalizeRewardCode, rewardErrorMessage } from "@/lib/passport";
-import { isClosedDate } from "@/lib/closures";
+import { isClosedDate, maineToday } from "@/lib/closures";
+import {
+  DELIVERY_ENABLED,
+  DELIVERY_EXCLUDED_SLUGS,
+  DELIVERY_LINE_NAME,
+  DELIVERY_MIN_ORDER_CENTS,
+  DELIVERY_NOTE_PREFIX,
+  DELIVERY_PREP_MINUTES,
+  customerDeliveryFeeCents,
+  deliveryOrderingStatus,
+  deliveryZone,
+  formatDeliveryAddress,
+  maineTimePlus,
+  normalizeZip,
+} from "@/lib/delivery";
+import { createQuote, doordashConfigured, formatEtaMaine, friendlyDoorDashError, toE164 } from "@/lib/doordash";
+import { pickupSlotsForDate } from "@/lib/hours";
+import { THANKSGIVING, cartHasThanksgiving, thanksgivingOpen } from "@/lib/thanksgiving";
 
 const isSandbox = process.env.NEXT_PUBLIC_ENV === "sandbox";
 const CLOVER_API_URL = isSandbox
@@ -94,10 +111,45 @@ function validate(body: any): { valid: boolean; error?: string } {
   if (!c?.email || !EMAIL_RE.test(c.email)) {
     return { valid: false, error: "Please enter a valid email address." };
   }
+  // Thanksgiving pre-orders: fixed pick-up day, within the order window, no delivery.
+  if (cartHasThanksgiving(body.items as OrderItem[])) {
+    if (!thanksgivingOpen(maineToday())) {
+      return { valid: false, error: "Thanksgiving pre-orders are closed. Please remove those items." };
+    }
+    if (body.fulfillment === "delivery") {
+      return { valid: false, error: "Thanksgiving pre-orders are pick-up only." };
+    }
+    if (body.pickupDate !== THANKSGIVING.pickupDate) {
+      return { valid: false, error: "Thanksgiving pre-orders are picked up on Wednesday, November 25." };
+    }
+  }
+  if (body.fulfillment === "delivery") {
+    if (!DELIVERY_ENABLED) return { valid: false, error: "Delivery isn't available yet." };
+    const d = body.delivery || {};
+    if (!c.phone || !/^\+1\d{10}$/.test(toE164(String(c.phone)))) {
+      return { valid: false, error: "Please enter a valid US phone number so the driver can reach you." };
+    }
+    if (typeof d.street !== "string" || d.street.trim().length < 3) {
+      return { valid: false, error: "Please enter your street address." };
+    }
+    if (typeof d.city !== "string" || !d.city.trim()) {
+      return { valid: false, error: "Please choose your city." };
+    }
+    if (!deliveryZone(String(d.zip || ""))) {
+      return { valid: false, error: "Sorry, we don't deliver to that ZIP code yet." };
+    }
+    const excluded = (body.items as OrderItem[]).find((it) => it.slug && DELIVERY_EXCLUDED_SLUGS.includes(it.slug));
+    if (excluded) {
+      return { valid: false, error: `Sorry, ${excluded.name} can't be delivered. Please remove it or choose pick-up.` };
+    }
+    const hours = deliveryOrderingStatus();
+    if (!hours.open) return { valid: false, error: hours.reason || "Delivery isn't available right now." };
+    return { valid: true };
+  }
   if (!body.pickupDate || !body.pickupSlot) {
     return { valid: false, error: "Please choose a pick-up date and time." };
   }
-  if (!ALLOWED_SLOTS.includes(body.pickupSlot)) {
+  if (!ALLOWED_SLOTS.includes(body.pickupSlot) && !pickupSlotsForDate(String(body.pickupDate)).includes(body.pickupSlot)) {
     return { valid: false, error: "That pick-up time is not available." };
   }
   // Mediodía UTC evita líos de DST al parsear la fecha.
@@ -112,24 +164,9 @@ function validate(body: any): { valid: boolean; error?: string } {
       error: "Sorry, we are closed that day. Please choose another pick-up date.",
     };
   }
-  // July 4th 2026: special hours 8am–12pm. Last pick-up slot is 11:00.
-  if (body.pickupDate === "2026-07-04" && body.pickupSlot > "11:00") {
-    return {
-      valid: false,
-      error:
-        "We close at noon on July 4th. Please select a pick-up time of 11:00 AM or earlier.",
-    };
-  }
-  // Aug 4 & 11, 2026: short-staffed, open at 8am. No 7:00 pick-up those days.
-  if (
-    (body.pickupDate === "2026-08-04" || body.pickupDate === "2026-08-11") &&
-    body.pickupSlot < "08:00"
-  ) {
-    return {
-      valid: false,
-      error:
-        "We open at 8:00 AM on this date. Please select a pick-up time of 8:00 AM or later.",
-    };
+  // Special hours (lib/hours.ts): the slot must exist for that date.
+  if (!pickupSlotsForDate(body.pickupDate).includes(body.pickupSlot)) {
+    return { valid: false, error: "That pick-up time is not available on this date." };
   }
   // No permitir fechas pasadas (comparación de cadenas YYYY-MM-DD).
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -160,13 +197,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: v.error }, { status: 400 });
   }
 
-  const { items, customer, pickupDate, pickupSlot, notes } = body as {
+  const { items, customer, notes } = body as {
     items: OrderItem[];
     customer: { name: string; email: string; phone?: string };
-    pickupDate: string;
-    pickupSlot: string;
     notes?: string;
   };
+  const isDelivery = body.fulfillment === "delivery";
+  // Delivery is same-day: "pick-up" becomes the time the courier collects.
+  const pickupDate: string = isDelivery ? maineToday() : body.pickupDate;
+  const pickupSlot: string = isDelivery ? maineTimePlus(DELIVERY_PREP_MINUTES) : body.pickupSlot;
 
   // Swiss Passport reward: re-checked here (never trust the browser). It is
   // only redeemed by the webhook once the payment is APPROVED, so an abandoned
@@ -183,6 +222,49 @@ export async function POST(request: NextRequest) {
       );
     }
     discountPercent = reward.percent;
+  }
+
+  // DELIVERY: price the courier on the server (never trust the browser's
+  // quote) and refuse addresses DoorDash will not serve. Nothing is booked
+  // here; the webhook books the courier once the payment is APPROVED.
+  let deliveryAddress = "";
+  let deliveryInstructions = "";
+  let deliveryFeeCents = 0;
+  let deliveryEta: string | null = null;
+  if (isDelivery) {
+    if (!doordashConfigured()) {
+      return NextResponse.json({ error: "Delivery isn't set up yet. Please choose pick-up." }, { status: 503 });
+    }
+    const d = body.delivery;
+    deliveryAddress = formatDeliveryAddress({
+      street: String(d.street),
+      unit: d.unit ? String(d.unit) : "",
+      city: String(d.city),
+      zip: normalizeZip(String(d.zip)),
+    });
+    deliveryInstructions = String(d.instructions || "").trim().slice(0, 250);
+    const itemsCents = items.reduce((s, it) => s + toCents(it.price) * it.quantity, 0);
+    if (itemsCents < DELIVERY_MIN_ORDER_CENTS) {
+      return NextResponse.json(
+        { error: `Delivery needs a minimum order of ${(DELIVERY_MIN_ORDER_CENTS / 100).toFixed(2)} before tax.` },
+        { status: 400 }
+      );
+    }
+    try {
+      const quote = await createQuote({
+        externalId: `precheck-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        dropoffAddress: deliveryAddress,
+        dropoffName: customer.name,
+        dropoffPhone: toE164(customer.phone || ""),
+        orderValueCents: itemsCents,
+      });
+      deliveryFeeCents = customerDeliveryFeeCents(quote.feeCents);
+      deliveryEta = formatEtaMaine(quote.dropoffEta);
+      console.log(`[Delivery] quote ok: fee ${quote.feeCents}c (customer pays ${deliveryFeeCents}c), eta ${deliveryEta}`);
+    } catch (err) {
+      console.error("[Delivery] quote failed:", err);
+      return NextResponse.json({ error: friendlyDoorDashError(err) }, { status: 400 });
+    }
   }
 
   // Resolver el Clover item ID para cada producto (si está mapeado).
@@ -249,19 +331,27 @@ export async function POST(request: NextRequest) {
     // Toda la info de pickup va como "note" para que aparezca en el POS junto al pago.
     const { subtotalCents, taxCents, totalCents, discountCents } = cartTotals(
       items,
-      discountPercent
+      discountPercent,
+      deliveryFeeCents
     );
     const origin = request.nextUrl.origin;
     const firstName = customer.name.split(" ")[0];
     const lastName = customer.name.split(" ").slice(1).join(" ") || firstName;
 
+    // Delivery orders keep the same field layout (the webhook and n8n parse
+    // "Key: value" pairs) and add where to deliver; "Pick-up" is then the time
+    // the courier collects. A "|" typed by the customer would break parsing.
+    const clean = (s: string) => s.replace(/\s*\|\s*/g, " / ");
     const pickupNote = [
-      "ONLINE PICK-UP ORDER",
-      `Customer: ${customer.name}`,
+      isDelivery ? DELIVERY_NOTE_PREFIX : "ONLINE PICK-UP ORDER",
+      `Customer: ${clean(customer.name)}`,
       `Email: ${customer.email}`,
       `Pick-up: ${pickupDate} at ${pickupSlot}`,
-      `Phone: ${customer.phone || "—"}`,
-      notes ? `Notes: ${notes}` : null,
+      `Phone: ${customer.phone ? clean(customer.phone) : "—"}`,
+      cartHasThanksgiving(items) ? "Event: Thanksgiving pre-order" : null,
+      isDelivery ? `Deliver to: ${clean(deliveryAddress)}` : null,
+      isDelivery && deliveryInstructions ? `Delivery notes: ${clean(deliveryInstructions)}` : null,
+      notes ? `Notes: ${clean(notes)}` : null,
       // Read back by the webhook to redeem the code after payment.
       rewardCode ? `Reward: ${rewardCode}` : null,
     ]
@@ -276,14 +366,28 @@ export async function POST(request: NextRequest) {
         ...(customer.phone ? { phoneNumber: customer.phone } : {}),
       },
       shoppingCart: {
-        lineItems: itemsWithIds.map((it) => ({
-          name: it.name,
-          unitQty: it.quantity,
-          // Names stay unchanged: the webhook matches them to products for stock.
-          price: discountedUnitCents(toCents(it.price), discountPercent),
-          note: pickupNote,
-          taxRates: [{ id: SALES_TAX.id, name: SALES_TAX.name, rate: SALES_TAX.rate }],
-        })),
+        lineItems: [
+          ...itemsWithIds.map((it) => ({
+            name: it.name,
+            unitQty: it.quantity,
+            // Names stay unchanged: the webhook matches them to products for stock.
+            price: discountedUnitCents(toCents(it.price), discountPercent),
+            note: pickupNote,
+            taxRates: [{ id: SALES_TAX.id, name: SALES_TAX.name, rate: SALES_TAX.rate }],
+          })),
+          // The courier fee as its own line; the webhook skips it for stock.
+          ...(isDelivery && deliveryFeeCents > 0
+            ? [
+                {
+                  name: DELIVERY_LINE_NAME,
+                  unitQty: 1,
+                  price: deliveryFeeCents,
+                  note: pickupNote,
+                  taxRates: [{ id: SALES_TAX.id, name: SALES_TAX.name, rate: SALES_TAX.rate }],
+                },
+              ]
+            : []),
+        ],
       },
       redirectUrl: `${origin}/checkout/confirm`,
     };
@@ -319,7 +423,7 @@ export async function POST(request: NextRequest) {
     const checkoutSessionId: string | undefined = checkoutData.checkoutSessionId;
 
     console.log(
-      `[Clover Orders] Session ${checkoutSessionId} for ${customer.name} — pickup ${pickupDate} ${pickupSlot}`
+      `[Clover Orders] Session ${checkoutSessionId} for ${customer.name} — ${isDelivery ? "DELIVERY" : "pickup"} ${pickupDate} ${pickupSlot}`
     );
 
     // Stock decrement is now handled in the webhook (only after APPROVED payment).
@@ -327,9 +431,14 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       checkoutUrl,
+      fulfillment: isDelivery ? "delivery" : "pickup",
       pickup: { date: pickupDate, slot: pickupSlot },
+      ...(isDelivery
+        ? { delivery: { address: deliveryAddress, readyAt: pickupSlot, etaDropoff: deliveryEta } }
+        : {}),
       subtotal: subtotalCents / 100,
       discount: discountCents / 100,
+      deliveryFee: deliveryFeeCents / 100,
       tax: taxCents / 100,
       total: totalCents / 100,
     });

@@ -58,9 +58,9 @@ export const menuSections: MenuSection[] = [
         description: "Our flaky croissant filled with vanilla pastry crème",
       },
       {
-        name: "Orange Brioche with Hazelnut Creme",
-        price: "5.00",
-        description: "Buttery brioche filled with hazelnut pastry crème",
+        name: "Brioche with Chocolate, Orange and Hazelnut",
+        price: "6.00",
+        description: "Buttery orange-scented brioche with milk chocolate, hazelnut and candied orange pieces",
       },
       { name: "Rye and Sesame Bread", price: "6.50" },
       { name: "Braided Zopf", price: "7.00" },
@@ -95,7 +95,16 @@ export const menuSections: MenuSection[] = [
         description:
           "Three layers with the distinctive Black Forest flavors — kirsch pannacotta, cherry coulis and a chocolate cremeux",
       },
-      { name: "Lemon Square", price: "7.00" },
+      {
+        name: "Lemon Tart",
+        price: "7.00",
+        description: "Buttery shortbread tart filled with vibrant lemon curd, finished with a dusting of sugar",
+      },
+      {
+        name: "Carrot Cake",
+        price: "9.00",
+        description: "Moist and spiced carrot cake with walnuts and raisins, cream cheese frosting",
+      },
       {
         name: "Seasonal Vanilla Kuchen",
         price: "6.00",

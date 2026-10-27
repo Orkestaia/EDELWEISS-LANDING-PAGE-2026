@@ -9,6 +9,8 @@
  * in advance from that date. Without it, the notice only shows on the day.
  */
 
+import { hhmmLabel, hoursForDate } from "./hours";
+
 /** "other" = closed with no public reason; the notice just apologises. */
 export type ClosureReason = "illness" | "holiday" | "other";
 
@@ -31,6 +33,11 @@ export const CLOSED_DATES: Record<string, Closure> = {
   },
   // Closed Wednesday Oct 28 (Valentina, 2026-10-27, no public reason) — announced from Tuesday.
   "2026-10-28": { reason: "other", noticeFrom: "2026-10-27" },
+  "2026-11-26": {
+    reason: "holiday",
+    label: "Thanksgiving Day",
+    noticeFrom: "2026-11-16",
+  },
 };
 
 /** Today's date in Maine (America/New_York) as YYYY-MM-DD. */
@@ -102,7 +109,7 @@ function describeClosure(date: string, isToday: boolean): ActiveClosure {
     timeZone: "UTC",
     weekday: "long",
   }).format(next);
-  const opens = nextWeekday === "Saturday" || nextWeekday === "Sunday" ? "8:00 am" : "7:00 am";
+  const opens = hhmmLabel(hoursForDate(nextKey).open).replace(/(am|pm)$/, " $1");
   return {
     date,
     closure: CLOSED_DATES[date],

@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { MapPin, Clock, Phone, Mail } from "lucide-react";
 import { Reveal } from "./Reveal";
 import { AlpineSilhouette } from "./AlpineBackground";
-import { isClosedToday, activeClosure, type ActiveClosure } from "@/lib/closures";
+import { isClosedToday, activeClosure, maineToday, type ActiveClosure } from "@/lib/closures";
+import { upcomingSpecialHours, hoursLabel, longDateLabel, type SpecialHours } from "@/lib/hours";
 
 const hours = [
   ["Monday", "7am – 2pm"],
@@ -48,7 +49,11 @@ export function Visit() {
   // Computed in the browser: the page is prerendered, so a build-time date
   // check would keep showing the banner after the closed day.
   const [closure, setClosure] = useState<ActiveClosure | null>(null);
-  useEffect(() => setClosure(activeClosure()), []);
+  const [special, setSpecial] = useState<(SpecialHours & { date: string })[]>([]);
+  useEffect(() => {
+    setClosure(activeClosure());
+    setSpecial(upcomingSpecialHours(maineToday()));
+  }, []);
   return (
     <section id="visit" className="relative isolate bg-cream-100 paper overflow-hidden">
       <AlpineSilhouette
@@ -158,6 +163,21 @@ export function Visit() {
                     This Saturday we open <strong>8am – 12pm only.</strong>{" "}
                     Happy Independence Day!
                   </p>
+                </div>
+              )}
+              {special.length > 0 && (
+                <div className="mt-5 rounded-xl border border-mustard/50 bg-mustard/10 px-4 py-3">
+                  <p className="text-xs uppercase tracking-[0.2em] text-mustard font-semibold mb-1">
+                    ⏰ Special hours
+                  </p>
+                  <ul className="text-sm text-cocoa space-y-0.5">
+                    {special.map((s) => (
+                      <li key={s.date}>
+                        <strong>{longDateLabel(s.date)}</strong> · {hoursLabel(s)} ({s.label})
+                        {s.note ? <span className="block text-xs text-cocoa/60">{s.note}</span> : null}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
               {closure && (

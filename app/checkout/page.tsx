@@ -3,15 +3,33 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Clock, ShoppingBag, ArrowLeft, Loader2 } from "lucide-react";
+import { Clock, ShoppingBag, ArrowLeft, Loader2, Store, Truck } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { useCart, formatPrice } from "@/lib/cart";
 import { trackBeginCheckout } from "@/lib/analytics";
 import { cartTotals, SALES_TAX_PERCENT } from "@/lib/tax";
-import { isClosedDate } from "@/lib/closures";
+import { isClosedDate, maineToday } from "@/lib/closures";
+import { SPECIAL_HOURS, hoursLabel, pickupSlotsForDate, longDateLabel } from "@/lib/hours";
+import { THANKSGIVING, cartHasThanksgiving } from "@/lib/thanksgiving";
+import {
+  DELIVERY_CITIES,
+  DELIVERY_ENABLED,
+  DELIVERY_HOURS,
+  DELIVERY_MIN_ORDER_CENTS,
+  DELIVERY_PREP_MINUTES,
+  DELIVERY_WINDOW_LABEL,
+  normalizeZip,
+  pretty,
+} from "@/lib/delivery";
 
 type Status = "idle" | "submitting" | "error";
+type Fulfillment = "pickup" | "delivery";
+type Quote =
+  | { status: "idle" }
+  | { status: "checking" }
+  | { status: "ok"; feeCents: number; customerFeeCents: number; dropoffEta: string | null; address: string }
+  | { status: "error"; error: string };
 
 /** Genera las próximas 14 fechas (abrimos los 7 días desde el 14/09/2026). */
 function buildPickupDates() {
@@ -36,19 +54,9 @@ function buildPickupDates() {
   return out;
 }
 
-const JULY4_DATE = "2026-07-04";
-// Aug 4 & 11, 2026 (two Tuesdays): short-staffed, open at 8am instead of 7am.
-const OPEN_8AM_DATES = new Set(["2026-08-04", "2026-08-11"]);
 
-function slotsForDate(dateValue: string, weekday: number) {
-  let start = weekday === 0 || weekday === 6 ? 8 : 7;
-  // These dates open at 8am, so drop the 7am pick-up slot.
-  if (OPEN_8AM_DATES.has(dateValue)) start = 8;
-  // July 4th closes at noon — last slot is 11:00 (pickup by 12pm).
-  const end = dateValue === JULY4_DATE ? 11 : 13;
-  const slots: string[] = [];
-  for (let h = start; h <= end; h++) slots.push(`${String(h).padStart(2, "0")}:00`);
-  return slots;
+function slotsForDate(dateValue: string, _weekday: number) {
+  return pickupSlotsForDate(dateValue);
 }
 
 function slotLabel(slot: string) {
@@ -79,18 +87,38 @@ export default function CheckoutPage() {
   const [reward, setReward] = useState<{ code: string; percent: number } | null>(null);
   const [rewardStatus, setRewardStatus] = useState<"idle" | "checking">("idle");
   const [rewardError, setRewardError] = useState<string | null>(null);
-  const totals = cartTotals(items, reward?.percent ?? 0);
+  // Delivery (DoorDash courier). The quote is only a preview: the server
+  // re-prices the courier when the order is placed.
+  const [fulfillment, setFulfillment] = useState<Fulfillment>("pickup");
+  const [street, setStreet] = useState("");
+  const [unit, setUnit] = useState("");
+  const [city, setCity] = useState("");
+  const [zip, setZip] = useState("");
+  const [deliveryInstructions, setDeliveryInstructions] = useState("");
+  const [quote, setQuote] = useState<Quote>({ status: "idle" });
+  const resetQuote = () => setQuote((q) => (q.status === "idle" ? q : { status: "idle" }));
+  // Thanksgiving pre-orders: everything in the cart is picked up on the fixed
+  // day, no delivery. The server enforces the same rules.
+  const tgCart = cartHasThanksgiving(items);
+  const effectiveFulfillment: Fulfillment = tgCart ? "pickup" : fulfillment;
+  const totals = cartTotals(
+    items,
+    reward?.percent ?? 0,
+    effectiveFulfillment === "delivery" && quote.status === "ok" ? quote.customerFeeCents : 0
+  );
   const [phone, setPhone] = useState("");
   const [pickupDate, setPickupDate] = useState(dates[0]?.value ?? "");
   const [pickupSlot, setPickupSlot] = useState("");
+  const effectivePickupDate = tgCart ? THANKSGIVING.pickupDate : pickupDate;
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
 
   const slots = useMemo(() => {
-    const entry = dates.find((d) => d.value === pickupDate);
-    return slotsForDate(pickupDate, entry?.weekday ?? 2);
-  }, [pickupDate, dates]);
+    const entry = dates.find((d) => d.value === effectivePickupDate);
+    return slotsForDate(effectivePickupDate, entry?.weekday ?? 2);
+  }, [effectivePickupDate, dates]);
+  const specialHours = SPECIAL_HOURS[effectivePickupDate];
 
   async function applyReward() {
     setRewardError(null);
@@ -117,6 +145,39 @@ export default function CheckoutPage() {
     }
   }
 
+  async function checkDelivery() {
+    setQuote({ status: "checking" });
+    try {
+      const res = await fetch("/api/doordash/quote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          phone: phone.trim(),
+          street: street.trim(),
+          unit: unit.trim(),
+          city,
+          zip: normalizeZip(zip),
+          subtotalCents: totals.originalSubtotalCents,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setQuote({
+          status: "ok",
+          feeCents: data.feeCents,
+          customerFeeCents: data.customerFeeCents,
+          dropoffEta: data.dropoffEta,
+          address: data.address,
+        });
+      } else {
+        setQuote({ status: "error", error: data.error || "Delivery isn't available right now." });
+      }
+    } catch {
+      setQuote({ status: "error", error: "Network error. Please try again." });
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setStatus("submitting");
@@ -133,8 +194,18 @@ export default function CheckoutPage() {
             quantity: i.quantity,
           })),
           customer: { name: name.trim(), email: email.trim(), phone: phone.trim() },
-          pickupDate,
-          pickupSlot,
+          fulfillment: effectiveFulfillment,
+          ...(effectiveFulfillment === "delivery"
+            ? {
+                delivery: {
+                  street: street.trim(),
+                  unit: unit.trim(),
+                  city,
+                  zip: normalizeZip(zip),
+                  instructions: deliveryInstructions.trim(),
+                },
+              }
+            : { pickupDate: effectivePickupDate, pickupSlot }),
           notes: notes.trim(),
           ...(reward ? { rewardCode: reward.code } : {}),
         }),
@@ -155,8 +226,13 @@ export default function CheckoutPage() {
         JSON.stringify({
           name: name.trim(),
           email: email.trim(),
-          pickupDate,
-          pickupSlot,
+          pickupDate: data.pickup?.date ?? effectivePickupDate,
+          pickupSlot: data.pickup?.slot ?? pickupSlot,
+          fulfillment: data.fulfillment ?? effectiveFulfillment,
+          deliveryAddress: data.delivery?.address,
+          readyAt: data.delivery?.readyAt,
+          etaDropoff: data.delivery?.etaDropoff,
+          deliveryFee: data.deliveryFee,
           subtotal: data.subtotal,
           discount: data.discount,
           tax: data.tax,
@@ -219,8 +295,22 @@ export default function CheckoutPage() {
           <ArrowLeft size={15} /> Back to the menu
         </Link>
         <h1 className="mt-5 font-display text-4xl sm:text-5xl text-cocoa leading-[1.05]">
-          Reserve your
-          <span className="italic text-forest"> pick-up.</span>
+          {tgCart ? (
+            <>
+              Your Thanksgiving
+              <span className="italic text-rust"> pre-order.</span>
+            </>
+          ) : fulfillment === "delivery" ? (
+            <>
+              Fresh pastry,
+              <span className="italic text-forest"> delivered.</span>
+            </>
+          ) : (
+            <>
+              Reserve your
+              <span className="italic text-forest"> pick-up.</span>
+            </>
+          )}
         </h1>
         <p className="mt-4 max-w-xl text-cocoa/70 leading-relaxed">
           Tell us who you are and when you&apos;ll swing by. We&apos;ll have it
@@ -261,11 +351,15 @@ export default function CheckoutPage() {
                     placeholder="jane@inbox.com"
                   />
                 </Field>
-                <Field label="Phone">
+                <Field label="Phone" required={effectiveFulfillment === "delivery"}>
                   <input
                     type="tel"
+                    required={effectiveFulfillment === "delivery"}
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => {
+                      setPhone(e.target.value);
+                      resetQuote();
+                    }}
                     className="cf-input"
                     placeholder="(207) 555-0123"
                   />
@@ -273,27 +367,84 @@ export default function CheckoutPage() {
               </div>
             </fieldset>
 
+            {tgCart && (
+              <div className="rounded-2xl border border-rust/30 bg-rust/5 px-5 py-4 text-sm text-cocoa">
+                <p className="font-display text-xl text-cocoa">Thanksgiving pre-order</p>
+                <p className="mt-1 text-cocoa/75">
+                  Everything in this order is picked up on{" "}
+                  <strong>{longDateLabel(THANKSGIVING.pickupDate)}</strong>, {specialHours ? hoursLabel(specialHours) : "8am – 3pm"}.
+                  Pick-up only; choose your time below. Loyalty points can only be redeemed in person.
+                </p>
+              </div>
+            )}
+
+            {DELIVERY_ENABLED && !tgCart && (
+              <fieldset className="space-y-3" disabled={status === "submitting"}>
+                <legend className="font-display text-2xl text-cocoa mb-2">
+                  How would you like it?
+                </legend>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setFulfillment("pickup")}
+                    className={`rounded-2xl border px-4 py-4 text-left transition-colors ${
+                      fulfillment === "pickup" ? "border-forest bg-forest/5" : "border-cocoa/15 hover:border-cocoa/40"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2 text-cocoa">
+                      <Store size={16} /> <span className="font-display text-xl">Pick up in store</span>
+                    </span>
+                    <span className="block mt-1 text-xs text-cocoa/60">Choose a day and time. Free.</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFulfillment("delivery")}
+                    className={`rounded-2xl border px-4 py-4 text-left transition-colors ${
+                      fulfillment === "delivery" ? "border-forest bg-forest/5" : "border-cocoa/15 hover:border-cocoa/40"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2 text-cocoa">
+                      <Truck size={16} /> <span className="font-display text-xl">Delivery</span>
+                    </span>
+                    <span className="block mt-1 text-xs text-cocoa/60">
+                      Same day, by DoorDash courier. Deliveries {DELIVERY_WINDOW_LABEL}.
+                    </span>
+                  </button>
+                </div>
+              </fieldset>
+            )}
+
+            {effectiveFulfillment === "pickup" && (
             <fieldset className="space-y-4" disabled={status === "submitting"}>
               <legend className="font-display text-2xl text-cocoa mb-2">
                 Pick-up time
               </legend>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Date" required>
-                  <select
-                    required
-                    value={pickupDate}
-                    onChange={(e) => {
-                      setPickupDate(e.target.value);
-                      setPickupSlot("");
-                    }}
-                    className="cf-input"
-                  >
-                    {dates.map((d) => (
-                      <option key={d.value} value={d.value}>
-                        {d.label}
-                      </option>
-                    ))}
-                  </select>
+                  {tgCart ? (
+                    <input
+                      type="text"
+                      readOnly
+                      value={longDateLabel(THANKSGIVING.pickupDate)}
+                      className="cf-input bg-cream-100 text-cocoa/70"
+                    />
+                  ) : (
+                    <select
+                      required
+                      value={pickupDate}
+                      onChange={(e) => {
+                        setPickupDate(e.target.value);
+                        setPickupSlot("");
+                      }}
+                      className="cf-input"
+                    >
+                      {dates.map((d) => (
+                        <option key={d.value} value={d.value}>
+                          {d.label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </Field>
                 <Field label="Time" required>
                   <select
@@ -322,14 +473,9 @@ export default function CheckoutPage() {
                   placeholder="Allergies, a specific time inside the hour, a message…"
                 />
               </Field>
-              {pickupDate === JULY4_DATE && (
+              {specialHours && !tgCart && (
                 <div className="rounded-xl border border-mustard/40 bg-mustard/10 px-4 py-3 text-sm text-cocoa">
-                  🎆 <strong>July 4th special hours:</strong> we close at noon. Last pick-up slot is 11:00 AM.
-                </div>
-              )}
-              {OPEN_8AM_DATES.has(pickupDate) && (
-                <div className="rounded-xl border border-mustard/40 bg-mustard/10 px-4 py-3 text-sm text-cocoa">
-                  ⏰ <strong>Special hours:</strong> we open at 8 AM on this date, so the earliest pick-up is 8:00 AM.
+                  ⏰ <strong>{specialHours.label}:</strong> special hours {hoursLabel(specialHours)} on this date.
                 </div>
               )}
               <p className="flex items-center gap-2 text-xs text-cocoa/55">
@@ -337,6 +483,119 @@ export default function CheckoutPage() {
                 8am).
               </p>
             </fieldset>
+            )}
+
+            {effectiveFulfillment === "delivery" && (
+              <fieldset className="space-y-4" disabled={status === "submitting"}>
+                <legend className="font-display text-2xl text-cocoa mb-2">
+                  Delivery address
+                </legend>
+                <Field label="Street address" required>
+                  <input
+                    type="text"
+                    required
+                    value={street}
+                    onChange={(e) => { setStreet(e.target.value); resetQuote(); }}
+                    className="cf-input"
+                    placeholder="123 Main St"
+                    autoComplete="street-address"
+                  />
+                </Field>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <Field label="Apt / unit">
+                    <input
+                      type="text"
+                      value={unit}
+                      onChange={(e) => { setUnit(e.target.value); resetQuote(); }}
+                      className="cf-input"
+                      placeholder="Apt 2B"
+                    />
+                  </Field>
+                  <Field label="City" required>
+                    <select
+                      required
+                      value={city}
+                      onChange={(e) => { setCity(e.target.value); resetQuote(); }}
+                      className="cf-input"
+                    >
+                      <option value="" disabled>
+                        Choose…
+                      </option>
+                      {DELIVERY_CITIES.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="ZIP code" required>
+                    <input
+                      type="text"
+                      required
+                      inputMode="numeric"
+                      maxLength={5}
+                      value={zip}
+                      onChange={(e) => { setZip(e.target.value); resetQuote(); }}
+                      className="cf-input"
+                      placeholder="04005"
+                      autoComplete="postal-code"
+                    />
+                  </Field>
+                </div>
+                <Field label="Delivery notes (optional)">
+                  <input
+                    type="text"
+                    value={deliveryInstructions}
+                    onChange={(e) => setDeliveryInstructions(e.target.value)}
+                    className="cf-input"
+                    placeholder="Gate code, leave at the door, call on arrival…"
+                    maxLength={250}
+                  />
+                </Field>
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={checkDelivery}
+                    disabled={
+                      quote.status === "checking" ||
+                      !street.trim() ||
+                      !city ||
+                      normalizeZip(zip).length !== 5 ||
+                      !phone.trim()
+                    }
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-cocoa/25 px-6 py-2.5 text-sm uppercase tracking-[0.2em] text-cocoa hover:bg-cocoa hover:text-cream-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {quote.status === "checking" ? (
+                      <>
+                        <Loader2 size={15} className="animate-spin" /> Checking…
+                      </>
+                    ) : quote.status === "ok" ? (
+                      "Re-check"
+                    ) : (
+                      "Check delivery"
+                    )}
+                  </button>
+                  {quote.status === "ok" && (
+                    <span className="text-sm text-forest">
+                      Delivery {formatPrice(quote.customerFeeCents / 100)}
+                      {quote.dropoffEta ? ` · arrives around ${quote.dropoffEta}` : ""}
+                    </span>
+                  )}
+                </div>
+                {quote.status === "error" && <p className="text-sm text-rust">{quote.error}</p>}
+                {quote.status === "idle" && (
+                  <p className="text-xs text-cocoa/55">
+                    Enter your phone and address, then check availability and price before paying.
+                  </p>
+                )}
+                <p className="flex items-center gap-2 text-xs text-cocoa/55">
+                  <Truck size={13} /> Same-day delivery by DoorDash courier, {DELIVERY_WINDOW_LABEL}. Order
+                  between {pretty(DELIVERY_HOURS.open)} and {pretty(DELIVERY_HOURS.lastOrder)}; minimum{" "}
+                  {formatPrice(DELIVERY_MIN_ORDER_CENTS / 100)} in pastry; ready in about{" "}
+                  {DELIVERY_PREP_MINUTES} minutes.
+                </p>
+              </fieldset>
+            )}
 
             <fieldset className="space-y-3" disabled={status === "submitting"}>
               <legend className="font-display text-2xl text-cocoa mb-2">
@@ -413,7 +672,10 @@ export default function CheckoutPage() {
 
             <button
               type="submit"
-              disabled={status === "submitting" || !pickupSlot}
+              disabled={
+                status === "submitting" ||
+                (effectiveFulfillment === "pickup" ? !pickupSlot : quote.status !== "ok")
+              }
               className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-full bg-cocoa text-cream-50 px-8 py-4 text-sm uppercase tracking-[0.2em] hover:bg-rust transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {status === "submitting" ? (
@@ -471,6 +733,14 @@ export default function CheckoutPage() {
                     </span>
                   </div>
                 )}
+                {effectiveFulfillment === "delivery" && (
+                  <div className="flex items-center justify-between text-sm text-cocoa/70">
+                    <span>Delivery (DoorDash)</span>
+                    <span className="tabular-nums">
+                      {quote.status === "ok" ? formatPrice(totals.deliveryFeeCents / 100) : "—"}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-sm text-cocoa/70">
                   <span>Tax ({SALES_TAX_PERCENT}%)</span>
                   <span className="tabular-nums">{formatPrice(totals.taxCents / 100)}</span>
@@ -485,8 +755,12 @@ export default function CheckoutPage() {
                 </div>
               </div>
               <p className="mt-4 text-xs text-cocoa/55 leading-relaxed">
-                Secure card payment on the next step via Clover. Your order
-                will be ready for pick-up at the chosen time.
+                Secure card payment on the next step via Clover.{" "}
+                {effectiveFulfillment === "delivery"
+                  ? "A DoorDash courier brings your order; you'll get a tracking link by email."
+                  : tgCart
+                  ? `Your Thanksgiving order will be ready on ${longDateLabel(THANKSGIVING.pickupDate)} at the chosen time.`
+                  : "Your order will be ready for pick-up at the chosen time."}
               </p>
             </div>
           </aside>

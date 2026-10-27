@@ -149,8 +149,8 @@ export function CartDrawer() {
                   </div>
                 </div>
                 <p className="text-xs leading-relaxed text-cocoa/55">
-                  Pick-up only · Every day, 7am–2pm. You&apos;ll choose your
-                  pick-up time at checkout.
+                  Every day, 7am–2pm. You&apos;ll choose your pick-up time at
+                  checkout. Thanksgiving pre-orders are picked up on Wednesday, November 25.
                 </p>
                 <Link
                   href="/checkout"
