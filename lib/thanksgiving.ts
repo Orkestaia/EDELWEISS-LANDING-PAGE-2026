@@ -47,7 +47,7 @@ export function cartHasThanksgiving(items: { slug?: string }[]): boolean {
 export const THANKSGIVING_GROUPS: { title: string; blurb: string; slugs: string[] }[] = [
   {
     title: "For the table",
-    blurb: "Large desserts and breads, baked the day before so they reach your table fresh.",
+    blurb: "Large desserts and breads, ready to share at the table.",
     slugs: ["tg-apple-cranberry-tart", "tg-pear-streusel-kuchen", "tg-pumpkin-tart", "tg-dinner-rolls", "tg-rosemary-focaccia"],
   },
   {

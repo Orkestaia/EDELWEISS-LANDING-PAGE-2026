@@ -47,7 +47,7 @@ export const SPECIAL_HOURS: Record<string, SpecialHours> = {
   },
   "2026-11-27": {
     open: "09:00",
-    close: "14:00",
+    close: "12:00",
     label: "Day after Thanksgiving",
     noticeFrom: "2026-11-16",
   },
