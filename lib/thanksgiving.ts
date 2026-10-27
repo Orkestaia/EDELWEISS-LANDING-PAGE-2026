@@ -13,7 +13,7 @@ import { products, type Product } from "./products";
 
 export const THANKSGIVING = {
   /** First day the block is shown and orders are accepted (Maine date). */
-  orderFrom: "2026-10-29",
+  orderFrom: "2026-10-27", // Valentina asked to open pre-orders right away (2026-10-27)
   /** Last day to order, inclusive. */
   lastOrderDate: "2026-11-20",
   /** Everything is picked up this day. Hours come from lib/hours.ts. */
