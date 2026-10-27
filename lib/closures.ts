@@ -11,7 +11,8 @@
 
 import { hhmmLabel, hoursForDate } from "./hours";
 
-export type ClosureReason = "illness" | "holiday";
+/** "other" = closed with no public reason; the notice just apologises. */
+export type ClosureReason = "illness" | "holiday" | "other";
 
 export interface Closure {
   reason: ClosureReason;
@@ -30,6 +31,8 @@ export const CLOSED_DATES: Record<string, Closure> = {
     label: "Indigenous Peoples' Day",
     noticeFrom: "2026-10-09",
   },
+  // Closed Wednesday Oct 28 (Valentina, 2026-10-27, no public reason) — announced from Tuesday.
+  "2026-10-28": { reason: "other", noticeFrom: "2026-10-27" },
   "2026-11-26": {
     reason: "holiday",
     label: "Thanksgiving Day",

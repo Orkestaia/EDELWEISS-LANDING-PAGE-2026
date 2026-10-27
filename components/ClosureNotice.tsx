@@ -56,6 +56,7 @@ export function ClosureNotice() {
   if (!closure) return null;
   const { isToday, weekday, longDate, backOn, closure: info } = closure;
   const holiday = info.reason === "holiday";
+  const illness = info.reason === "illness";
 
   return (
     <AnimatePresence>
@@ -132,11 +133,23 @@ export function ClosureNotice() {
                       any other day are open as usual.
                     </>
                   )
-                ) : (
+                ) : illness ? (
                   <>
                     Alex and Valentina are feeling under the weather, so for health
                     reasons the bakery is <strong className="text-cream-50">closed today</strong>{" "}
                     and there are no pick-ups. Thank you for understanding.
+                  </>
+                ) : isToday ? (
+                  <>
+                    The bakery is <strong className="text-cream-50">closed today</strong> and
+                    there are no pick-ups. Sorry for the inconvenience, and thank you for
+                    understanding.
+                  </>
+                ) : (
+                  <>
+                    The bakery will be <strong className="text-cream-50">closed on {longDate}</strong>,
+                    so there are no pick-ups that day. Sorry for the inconvenience. Online
+                    orders for any other day are open as usual.
                   </>
                 )}
               </p>
@@ -158,7 +171,7 @@ export function ClosureNotice() {
                 onClick={dismiss}
                 className="mt-5 w-full inline-flex items-center justify-center rounded-full bg-mustard text-cocoa px-6 py-3 text-xs uppercase tracking-[0.2em] font-semibold hover:bg-mustard/90 transition-colors"
               >
-                {holiday ? "Got it, thanks!" : "Got it, get well soon!"}
+                {illness ? "Got it, get well soon!" : "Got it, thanks!"}
               </button>
             </div>
           </motion.div>
