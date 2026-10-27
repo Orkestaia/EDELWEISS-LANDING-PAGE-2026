@@ -44,8 +44,8 @@ const floatingProducts: FloatingItem[] = [
     rotate: -6,
   },
   {
-    src: "/images/hero/truffle-trio.webp",
-    alt: "Swiss chocolate truffles",
+    src: "/images/hero/creme-puff.webp",
+    alt: "Chocolate-glazed cream puff",
     pos: "top-[0%] right-[-5%] w-[28%] sm:w-[23%] lg:w-[23%]",
     delay: 1.2,
     duration: 8.4,
@@ -68,8 +68,8 @@ const floatingProducts: FloatingItem[] = [
     rotate: 7,
   },
   {
-    src: "/images/hero/spitzbub.webp",
-    alt: "Spitzbub — Swiss raspberry shortbread",
+    src: "/images/hero/fruit-danish.webp",
+    alt: "Blueberry fruit danish",
     pos: "hidden sm:block bottom-[11%] left-[3%] w-[14%] sm:w-[13%] lg:w-[14%]",
     delay: 1.8,
     duration: 6.8,

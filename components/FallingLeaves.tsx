@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 import { useReducedMotion } from "framer-motion";
 import { MAPLE_LEAF_MARKUP, MAPLE_LEAF_VIEWBOX } from "./mapleLeaf";
 
@@ -15,15 +15,23 @@ import { MAPLE_LEAF_MARKUP, MAPLE_LEAF_VIEWBOX } from "./mapleLeaf";
  * leaf via <use>, so the markup cost is paid once, not 14 times.
  *
  * `density` 0.5–1.5 scales the number of leaves.
+ * `fixed` pins the layer to the viewport (site-wide seasonal overlay) instead
+ * of filling its parent; `fade` scales every leaf's opacity (0–1).
  */
 export function FallingLeaves({
   density = 1,
   className = "",
+  fixed = false,
+  fade = 1,
 }: {
   density?: number;
   className?: string;
+  fixed?: boolean;
+  fade?: number;
 }) {
   const reduce = useReducedMotion();
+  // Unique symbol id per instance, so two layers on one page never clash.
+  const symbolId = `maple-leaf${useId().replace(/:/g, "")}`;
   const leaves = useMemo(() => {
     const colors = ["#B85C3E", "#C8782F", "#E2B341", "#8E4A2E", "#A86B3C"];
     const count = Math.round(14 * density);
@@ -39,14 +47,17 @@ export function FallingLeaves({
       spin: 4 + rnd() * 6,
       color: colors[i % colors.length],
       flip: rnd() > 0.5 ? -1 : 1,
-      opacity: 0.45 + rnd() * 0.35,
+      opacity: (0.45 + rnd() * 0.35) * fade,
     }));
-  }, [density]);
+  }, [density, fade]);
 
   if (reduce) return null;
 
   return (
-    <div className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`} aria-hidden="true">
+    <div
+      className={`pointer-events-none ${fixed ? "fixed z-30" : "absolute"} inset-0 overflow-hidden ${className}`}
+      aria-hidden="true"
+    >
       <style>{`
         @keyframes leaf-fall { 0% { transform: translate3d(0, -12vh, 0); } 100% { transform: translate3d(0, 110vh, 0); } }
         @keyframes leaf-sway { 0%, 100% { transform: translateX(-28px); } 50% { transform: translateX(28px); } }
@@ -58,7 +69,7 @@ export function FallingLeaves({
       `}</style>
       {/* One hidden definition of the leaf; every falling leaf references it. */}
       <svg width="0" height="0" className="absolute" aria-hidden="true">
-        <symbol id="maple-leaf" viewBox={MAPLE_LEAF_VIEWBOX} dangerouslySetInnerHTML={{ __html: MAPLE_LEAF_MARKUP }} />
+        <symbol id={symbolId} viewBox={MAPLE_LEAF_VIEWBOX} dangerouslySetInnerHTML={{ __html: MAPLE_LEAF_MARKUP }} />
       </svg>
       {leaves.map((l, i) => (
         <div
@@ -82,7 +93,7 @@ export function FallingLeaves({
               height={l.size}
               style={{ color: l.color }}
             >
-              <use href="#maple-leaf" />
+              <use href={`#${symbolId}`} />
             </svg>
           </div>
         </div>
