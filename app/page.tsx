@@ -13,7 +13,6 @@ import { Footer } from "@/components/Footer";
 import { NewsletterModal } from "@/components/NewsletterModal";
 import { SignupPopup } from "@/components/SignupPopup";
 import { HolidayNotice } from "@/components/HolidayNotice";
-import { MondayNotice } from "@/components/MondayNotice";
 import { ClosureNotice } from "@/components/ClosureNotice";
 import { ThanksgivingSection } from "@/components/ThanksgivingSection";
 
@@ -36,7 +35,6 @@ export default function Home() {
       <NewsletterModal />
       <SignupPopup />
       <HolidayNotice />
-      <MondayNotice />
       <ClosureNotice />
     </main>
   );
