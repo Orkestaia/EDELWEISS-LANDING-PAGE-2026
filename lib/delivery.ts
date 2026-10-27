@@ -21,22 +21,16 @@ export const DELIVERY_LINE_NAME = "Delivery (DoorDash)";
 /** Prefix of the Clover note on delivery orders (pick-up uses ONLINE PICK-UP ORDER). */
 export const DELIVERY_NOTE_PREFIX = "ONLINE DELIVERY ORDER";
 
-// Meeting 2026-10-17: Valentina wants roughly a 10-mile radius around the
-// shop. These are the ZIPs inside it; DoorDash still has the final say (its
-// radius is dynamic, and the quote fails for an address it will not serve).
+// Meeting 2026-10-17: Valentina wanted roughly 10 miles, but the Drive
+// On-Demand terms shown in the Merchant Portal on 2026-10-27 set the delivery
+// radius at 5 MILES from the shop. These ZIPs sit inside (or straddle) that
+// circle; DoorDash still has the final say per address (the quote fails for
+// an address it will not serve). Widen only if DoorDash raises the radius.
 export const DELIVERY_ZONES: { zip: string; city: string }[] = [
   { zip: "04005", city: "Biddeford" },
-  { zip: "04005", city: "Dayton" },
   { zip: "04006", city: "Biddeford Pool" },
   { zip: "04072", city: "Saco" },
   { zip: "04064", city: "Old Orchard Beach" },
-  { zip: "04074", city: "Scarborough" },
-  { zip: "04043", city: "Kennebunk" },
-  { zip: "04046", city: "Kennebunkport" },
-  { zip: "04046", city: "Arundel" },
-  { zip: "04002", city: "Lyman" },
-  { zip: "04042", city: "Hollis" },
-  { zip: "04093", city: "Buxton" },
 ];
 
 export const DELIVERY_CITIES = Array.from(new Set(DELIVERY_ZONES.map((z) => z.city)));
