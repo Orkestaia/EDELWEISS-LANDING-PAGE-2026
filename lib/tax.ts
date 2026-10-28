@@ -57,7 +57,9 @@ export function cartTotals(
   discountPercent = 0,
   // One more taxable line (Maine taxes delivery charges arranged by the
   // seller); Clover aggregates lines sharing one rate before rounding.
-  deliveryFeeCents = 0
+  deliveryFeeCents = 0,
+  // Driver tip: its own line, NOT taxed (it is passed in full to the Dasher).
+  tipCents = 0
 ) {
   const originalSubtotalCents = items.reduce(
     (sum, it) => sum + toCents(it.price) * it.quantity,
@@ -74,7 +76,8 @@ export function cartTotals(
     discountCents: originalSubtotalCents - subtotalCents,
     subtotalCents,
     deliveryFeeCents,
+    tipCents,
     taxCents: tax,
-    totalCents: taxableCents + tax,
+    totalCents: taxableCents + tax + tipCents,
   };
 }

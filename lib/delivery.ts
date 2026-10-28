@@ -69,6 +69,28 @@ export type CustomerFeeRule =
 // $9.75, but production billing follows the contract).
 export const CUSTOMER_FEE_RULE: CustomerFeeRule = { mode: "flat", cents: 799 };
 
+/** Fee charged when the courier is booked by hand (no live DoorDash quote). */
+export function manualDeliveryFeeCents(): number {
+  return CUSTOMER_FEE_RULE.mode === "flat" ? CUSTOMER_FEE_RULE.cents : 799;
+}
+
+// Drive On-Demand agreement, clause 4.5: offer the customer a tip with 15%
+// pre-selected. 100% of it goes to the Dasher (staff type it into the
+// DoorDash request; with the API it is sent as `tip`). It is its own untaxed
+// line on the Clover order, so it never counts as bakery revenue.
+export const DRIVER_TIP_LINE_NAME = "Driver tip (DoorDash)";
+export const TIP_PERCENT_OPTIONS = [0, 10, 15, 20] as const;
+export const DEFAULT_TIP_PERCENT = 15;
+
+export function isValidTipPercent(p: unknown): p is number {
+  return typeof p === "number" && (TIP_PERCENT_OPTIONS as readonly number[]).includes(p);
+}
+
+/** Tip on the pastry subtotal (after any reward discount), in cents. */
+export function driverTipCents(itemsCents: number, percent: number): number {
+  return Math.round((itemsCents * percent) / 100);
+}
+
 export function customerDeliveryFeeCents(quotedCents: number): number {
   switch (CUSTOMER_FEE_RULE.mode) {
     case "flat":

@@ -19,6 +19,9 @@ import {
   DELIVERY_MIN_ORDER_CENTS,
   DELIVERY_PREP_MINUTES,
   DELIVERY_WINDOW_LABEL,
+  DEFAULT_TIP_PERCENT,
+  TIP_PERCENT_OPTIONS,
+  driverTipCents,
   normalizeZip,
   pretty,
 } from "@/lib/delivery";
@@ -28,7 +31,14 @@ type Fulfillment = "pickup" | "delivery";
 type Quote =
   | { status: "idle" }
   | { status: "checking" }
-  | { status: "ok"; feeCents: number; customerFeeCents: number; dropoffEta: string | null; address: string }
+  | {
+      status: "ok";
+      feeCents: number;
+      customerFeeCents: number;
+      pickupEta: string | null;
+      dropoffEta: string | null;
+      address: string;
+    }
   | { status: "error"; error: string };
 
 /** Genera las próximas 14 fechas (abrimos los 7 días desde el 14/09/2026). */
@@ -96,15 +106,21 @@ export default function CheckoutPage() {
   const [zip, setZip] = useState("");
   const [deliveryInstructions, setDeliveryInstructions] = useState("");
   const [quote, setQuote] = useState<Quote>({ status: "idle" });
+  // Driver tip (contract: offered with 15% pre-selected; 100% to the Dasher).
+  const [tipPercent, setTipPercent] = useState<number>(DEFAULT_TIP_PERCENT);
   const resetQuote = () => setQuote((q) => (q.status === "idle" ? q : { status: "idle" }));
   // Thanksgiving pre-orders: everything in the cart is picked up on the fixed
   // day, no delivery. The server enforces the same rules.
   const tgCart = cartHasThanksgiving(items);
   const effectiveFulfillment: Fulfillment = tgCart ? "pickup" : fulfillment;
+  const deliveryActive = effectiveFulfillment === "delivery" && quote.status === "ok";
+  const pastryCents = cartTotals(items, reward?.percent ?? 0).subtotalCents;
+  const tipCents = deliveryActive ? driverTipCents(pastryCents, tipPercent) : 0;
   const totals = cartTotals(
     items,
     reward?.percent ?? 0,
-    effectiveFulfillment === "delivery" && quote.status === "ok" ? quote.customerFeeCents : 0
+    deliveryActive ? quote.customerFeeCents : 0,
+    tipCents
   );
   const [phone, setPhone] = useState("");
   const [pickupDate, setPickupDate] = useState(dates[0]?.value ?? "");
@@ -167,6 +183,7 @@ export default function CheckoutPage() {
           status: "ok",
           feeCents: data.feeCents,
           customerFeeCents: data.customerFeeCents,
+          pickupEta: data.pickupEta ?? null,
           dropoffEta: data.dropoffEta,
           address: data.address,
         });
@@ -204,6 +221,7 @@ export default function CheckoutPage() {
                   zip: normalizeZip(zip),
                   instructions: deliveryInstructions.trim(),
                 },
+                tipPercent,
               }
             : { pickupDate: effectivePickupDate, pickupSlot }),
           notes: notes.trim(),
@@ -233,6 +251,7 @@ export default function CheckoutPage() {
           readyAt: data.delivery?.readyAt,
           etaDropoff: data.delivery?.etaDropoff,
           deliveryFee: data.deliveryFee,
+          tip: data.tip,
           subtotal: data.subtotal,
           discount: data.discount,
           tax: data.tax,
@@ -578,10 +597,38 @@ export default function CheckoutPage() {
                   {quote.status === "ok" && (
                     <span className="text-sm text-forest">
                       Delivery {formatPrice(quote.customerFeeCents / 100)}
-                      {quote.dropoffEta ? ` · arrives around ${quote.dropoffEta}` : ""}
+                      {quote.dropoffEta
+                        ? ` · arrives around ${quote.dropoffEta}`
+                        : quote.pickupEta
+                        ? ` · ready for the courier around ${quote.pickupEta}`
+                        : ""}
                     </span>
                   )}
                 </div>
+                {quote.status === "ok" && (
+                  <div className="space-y-2 pt-1">
+                    <div className="text-xs uppercase tracking-[0.2em] text-cocoa/60">Tip for your driver</div>
+                    <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Tip for your driver">
+                      {TIP_PERCENT_OPTIONS.map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          role="radio"
+                          aria-checked={tipPercent === p}
+                          onClick={() => setTipPercent(p)}
+                          className={`rounded-full border px-4 py-2 text-sm transition-colors ${
+                            tipPercent === p
+                              ? "border-forest bg-forest text-cream-50"
+                              : "border-cocoa/20 text-cocoa hover:border-cocoa/50"
+                          }`}
+                        >
+                          {p === 0 ? "No tip" : `${p}% · ${formatPrice(driverTipCents(pastryCents, p) / 100)}`}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-cocoa/55">100% of the tip goes to your DoorDash driver.</p>
+                  </div>
+                )}
                 {quote.status === "error" && <p className="text-sm text-rust">{quote.error}</p>}
                 {quote.status === "idle" && (
                   <p className="text-xs text-cocoa/55">
@@ -741,6 +788,12 @@ export default function CheckoutPage() {
                     </span>
                   </div>
                 )}
+                {deliveryActive && totals.tipCents > 0 && (
+                  <div className="flex items-center justify-between text-sm text-cocoa/70">
+                    <span>Driver tip ({tipPercent}%)</span>
+                    <span className="tabular-nums">{formatPrice(totals.tipCents / 100)}</span>
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-sm text-cocoa/70">
                   <span>Tax ({SALES_TAX_PERCENT}%)</span>
                   <span className="tabular-nums">{formatPrice(totals.taxCents / 100)}</span>
@@ -757,7 +810,7 @@ export default function CheckoutPage() {
               <p className="mt-4 text-xs text-cocoa/55 leading-relaxed">
                 Secure card payment on the next step via Clover.{" "}
                 {effectiveFulfillment === "delivery"
-                  ? "A DoorDash courier brings your order; you'll get a tracking link by email."
+                  ? "A DoorDash driver brings your order today; they'll call your phone if they need you."
                   : tgCart
                   ? `Your Thanksgiving order will be ready on ${longDateLabel(THANKSGIVING.pickupDate)} at the chosen time.`
                   : "Your order will be ready for pick-up at the chosen time."}

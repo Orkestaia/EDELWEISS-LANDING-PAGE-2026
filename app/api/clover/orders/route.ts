@@ -33,14 +33,19 @@ import {
   DELIVERY_MIN_ORDER_CENTS,
   DELIVERY_NOTE_PREFIX,
   DELIVERY_PREP_MINUTES,
+  DEFAULT_TIP_PERCENT,
+  DRIVER_TIP_LINE_NAME,
   customerDeliveryFeeCents,
   deliveryOrderingStatus,
   deliveryZone,
+  driverTipCents,
   formatDeliveryAddress,
+  isValidTipPercent,
   maineTimePlus,
+  manualDeliveryFeeCents,
   normalizeZip,
 } from "@/lib/delivery";
-import { createQuote, doordashConfigured, formatEtaMaine, friendlyDoorDashError, toE164 } from "@/lib/doordash";
+import { DOORDASH_ENV, createQuote, doordashConfigured, formatEtaMaine, friendlyDoorDashError, toE164 } from "@/lib/doordash";
 import { pickupSlotsForDate } from "@/lib/hours";
 import { THANKSGIVING, cartHasThanksgiving, thanksgivingOpen } from "@/lib/thanksgiving";
 
@@ -142,6 +147,9 @@ function validate(body: any): { valid: boolean; error?: string } {
     if (excluded) {
       return { valid: false, error: `Sorry, ${excluded.name} can't be delivered. Please remove it or choose pick-up.` };
     }
+    if (body.tipPercent !== undefined && !isValidTipPercent(body.tipPercent)) {
+      return { valid: false, error: "Please choose a tip option." };
+    }
     const hours = deliveryOrderingStatus();
     if (!hours.open) return { valid: false, error: hours.reason || "Delivery isn't available right now." };
     return { valid: true };
@@ -230,9 +238,11 @@ export async function POST(request: NextRequest) {
   let deliveryAddress = "";
   let deliveryInstructions = "";
   let deliveryFeeCents = 0;
+  let tipCents = 0;
   let deliveryEta: string | null = null;
+  const manualDispatch = DOORDASH_ENV === "manual";
   if (isDelivery) {
-    if (!doordashConfigured()) {
+    if (!manualDispatch && !doordashConfigured()) {
       return NextResponse.json({ error: "Delivery isn't set up yet. Please choose pick-up." }, { status: 503 });
     }
     const d = body.delivery;
@@ -250,7 +260,16 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    try {
+    // Tip on what the customer actually pays for pastry (after any reward).
+    const pastryCents = cartTotals(items, discountPercent).subtotalCents;
+    tipCents = driverTipCents(
+      pastryCents,
+      isValidTipPercent(body.tipPercent) ? body.tipPercent : DEFAULT_TIP_PERCENT
+    );
+    if (manualDispatch) {
+      // No DoorDash API: flat contract fee, coverage already checked by ZIP.
+      deliveryFeeCents = manualDeliveryFeeCents();
+    } else try {
       const quote = await createQuote({
         externalId: `precheck-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         dropoffAddress: deliveryAddress,
@@ -332,7 +351,8 @@ export async function POST(request: NextRequest) {
     const { subtotalCents, taxCents, totalCents, discountCents } = cartTotals(
       items,
       discountPercent,
-      deliveryFeeCents
+      deliveryFeeCents,
+      tipCents
     );
     const origin = request.nextUrl.origin;
     const firstName = customer.name.split(" ")[0];
@@ -351,6 +371,7 @@ export async function POST(request: NextRequest) {
       cartHasThanksgiving(items) ? "Event: Thanksgiving pre-order" : null,
       isDelivery ? `Deliver to: ${clean(deliveryAddress)}` : null,
       isDelivery && deliveryInstructions ? `Delivery notes: ${clean(deliveryInstructions)}` : null,
+      isDelivery ? `Driver tip: ${(tipCents / 100).toFixed(2)}` : null,
       notes ? `Notes: ${clean(notes)}` : null,
       // Read back by the webhook to redeem the code after payment.
       rewardCode ? `Reward: ${rewardCode}` : null,
@@ -386,6 +407,10 @@ export async function POST(request: NextRequest) {
                   taxRates: [{ id: SALES_TAX.id, name: SALES_TAX.name, rate: SALES_TAX.rate }],
                 },
               ]
+            : []),
+          // Driver tip: untaxed (no taxRates), passed in full to the Dasher.
+          ...(isDelivery && tipCents > 0
+            ? [{ name: DRIVER_TIP_LINE_NAME, unitQty: 1, price: tipCents, note: pickupNote }]
             : []),
         ],
       },
@@ -439,6 +464,7 @@ export async function POST(request: NextRequest) {
       subtotal: subtotalCents / 100,
       discount: discountCents / 100,
       deliveryFee: deliveryFeeCents / 100,
+      tip: tipCents / 100,
       tax: taxCents / 100,
       total: totalCents / 100,
     });

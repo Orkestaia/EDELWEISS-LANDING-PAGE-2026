@@ -29,7 +29,7 @@ import crypto from "crypto";
 import { products, effectiveCloverItemId } from "@/lib/products";
 import { taxCents } from "@/lib/tax";
 import { checkReward } from "@/lib/passport";
-import { DELIVERY_LINE_NAME, DELIVERY_NOTE_PREFIX, DELIVERY_PREP_MINUTES } from "@/lib/delivery";
+import { DELIVERY_LINE_NAME, DELIVERY_NOTE_PREFIX, DELIVERY_PREP_MINUTES, DRIVER_TIP_LINE_NAME } from "@/lib/delivery";
 import {
   DOORDASH_ENV,
   DoorDashError,
@@ -413,11 +413,16 @@ export async function POST(request: NextRequest) {
     }
     const isDelivery = firstNote.startsWith(DELIVERY_NOTE_PREFIX);
     const qtyOf = (li: any) => (li.unitQty >= 1000 ? Math.round(li.unitQty / 1000) : (li.unitQty || 1));
-    const productLines = lineItems.filter((li: any) => li.name !== DELIVERY_LINE_NAME);
+    const productLines = lineItems.filter(
+      (li: any) => li.name !== DELIVERY_LINE_NAME && li.name !== DRIVER_TIP_LINE_NAME
+    );
     const itemsSubtotalCents = productLines.reduce((s: number, li: any) => s + (li.price || 0) * qtyOf(li), 0);
-    const deliveryFeeCents = lineItems
-      .filter((li: any) => li.name === DELIVERY_LINE_NAME)
-      .reduce((s: number, li: any) => s + (li.price || 0) * qtyOf(li), 0);
+    const sumLines = (name: string) =>
+      lineItems
+        .filter((li: any) => li.name === name)
+        .reduce((s: number, li: any) => s + (li.price || 0) * qtyOf(li), 0);
+    const deliveryFeeCents = sumLines(DELIVERY_LINE_NAME);
+    const tipCents = sumLines(DRIVER_TIP_LINE_NAME);
 
     // ---- DOORDASH: book the courier now that the payment is APPROVED ----
     // External id = Clover order id, so a retried webhook can't book twice
@@ -439,6 +444,7 @@ export async function POST(request: NextRequest) {
             dropoffInstructions: noteFields["Delivery notes"] || undefined,
             orderValueCents: itemsSubtotalCents,
             items: productLines.map((li: any) => ({ name: li.name, quantity: qtyOf(li) })),
+            tipCents,
             pickupTime: new Date(Date.now() + DELIVERY_PREP_MINUTES * 60_000),
           });
           console.log(`[DoorDash] delivery booked for ${orderId}: ${delivery.status}, fee ${delivery.feeCents}c, eta ${delivery.dropoffEta}`);
@@ -488,21 +494,49 @@ export async function POST(request: NextRequest) {
       // Prefer the real charge from the payment; fall back to our own math.
       const taxableCents = itemsSubtotalCents + deliveryFeeCents;
       const taxChargedCents = paidTaxCents ?? taxCents(taxableCents);
-      const totalChargedCents = paidAmountCents ?? taxableCents + taxChargedCents;
-      if (totalChargedCents - taxChargedCents !== taxableCents) {
+      const totalChargedCents = paidAmountCents ?? taxableCents + taxChargedCents + tipCents;
+      if (totalChargedCents - taxChargedCents - tipCents !== taxableCents) {
         console.warn(
-          `[Webhook] totals mismatch: items ${itemsSubtotalCents}c + delivery ${deliveryFeeCents}c + tax ${taxChargedCents}c != paid ${totalChargedCents}c`
+          `[Webhook] totals mismatch: items ${itemsSubtotalCents}c + delivery ${deliveryFeeCents}c + tip ${tipCents}c + tax ${taxChargedCents}c != paid ${totalChargedCents}c`
         );
       }
+
+      // Manual dispatch: everything staff type into DoorDash "Request a
+      // delivery", in the same order as that form, ready to copy.
+      const fullName = (noteFields["Customer"] || "").trim();
+      const [givenName, ...rest] = fullName.split(" ");
+      const deliveryBrief = !isDelivery
+        ? ""
+        : [
+            `First name: ${givenName || ""}`,
+            `Last name: ${rest.join(" ")}`,
+            `Phone: ${noteFields["Phone"] || ""}`,
+            `Delivery address: ${noteFields["Deliver to"] || ""}`,
+            `Instructions: ${noteFields["Delivery notes"] || "—"}`,
+            `Courier pick-up: today at ${pickupTime.trim()}`,
+            `Driver tip: ${(tipCents / 100).toFixed(2)}`,
+            `Order value: ${(itemsSubtotalCents / 100).toFixed(2)}`,
+          ].join("\n");
 
       const n8nPayload = {
         orderId,
         customerName: noteFields["Customer"] || "Online Customer",
         customerEmail: noteFields["Email"] || "",
         customerPhone: noteFields["Phone"] || "",
-        pickupDate: pickupDateLabel,
-        pickupTime: pickupTime.trim(),
-        notes: noteFields["Notes"] || "",
+        // Delivery orders reuse fields every email template already shows, so
+        // staff see "DELIVERY" and the DoorDash details even before the n8n
+        // template is updated for the dedicated fields below.
+        pickupDate: isDelivery ? `🚚 DELIVERY TODAY · ${pickupDateLabel}` : pickupDateLabel,
+        pickupTime: isDelivery ? `courier pick-up ${pickupTime.trim()}` : pickupTime.trim(),
+        notes: isDelivery
+          ? [
+              "DELIVERY ORDER – details for DoorDash \"Solicitar una entrega\":",
+              deliveryBrief,
+              noteFields["Notes"] ? `Customer notes: ${noteFields["Notes"]}` : "",
+            ]
+              .filter(Boolean)
+              .join("\n")
+          : noteFields["Notes"] || "",
         items: productLines.map((li: any) => ({
           name: li.name,
           qty: qtyOf(li),
@@ -511,6 +545,7 @@ export async function POST(request: NextRequest) {
         // Items only (the Swiss Passport stamps read this); fee goes separately.
         subtotal: `${(itemsSubtotalCents / 100).toFixed(2)}`,
         deliveryFee: `${(deliveryFeeCents / 100).toFixed(2)}`,
+        driverTip: `${(tipCents / 100).toFixed(2)}`,
         tax: `${(taxChargedCents / 100).toFixed(2)}`,
         total: `${(totalChargedCents / 100).toFixed(2)}`,
         // Delivery (empty strings on pick-up orders so n8n templates can test them).
@@ -520,6 +555,9 @@ export async function POST(request: NextRequest) {
         courierPickupTime: isDelivery ? pickupTime.trim() : "",
         trackingUrl: delivery?.trackingUrl || "",
         deliveryEta: formatEtaMaine(delivery?.dropoffEta ?? null) || "",
+        // Subject line + copy-ready block for the staff email (manual mode).
+        emailSubjectPrefix: !isDelivery ? "" : manualDispatch ? "🚚 DELIVERY – REQUEST A DASHER NOW" : "🚚 DELIVERY",
+        deliveryBrief,
         deliveryStatus: !isDelivery
           ? ""
           : manualDispatch

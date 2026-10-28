@@ -14,13 +14,16 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   DELIVERY_ENABLED,
   DELIVERY_MIN_ORDER_CENTS,
+  DELIVERY_PREP_MINUTES,
   customerDeliveryFeeCents,
   deliveryOrderingStatus,
   deliveryZone,
   formatDeliveryAddress,
+  manualDeliveryFeeCents,
   normalizeZip,
 } from "@/lib/delivery";
 import {
+  DOORDASH_ENV,
   createQuote,
   doordashConfigured,
   formatEtaMaine,
@@ -32,7 +35,10 @@ const fail = (error: string, status = 400) => NextResponse.json({ ok: false, err
 
 export async function POST(request: NextRequest) {
   if (!DELIVERY_ENABLED) return fail("Delivery isn't available yet.", 404);
-  if (!doordashConfigured()) return fail("Delivery isn't set up yet. Please choose pick-up.", 503);
+  // Manual mode: no DoorDash API at all. Coverage = our ZIP list, price = the
+  // contract's flat fee; staff book the courier in the Merchant Portal.
+  const manual = DOORDASH_ENV === "manual";
+  if (!manual && !doordashConfigured()) return fail("Delivery isn't set up yet. Please choose pick-up.", 503);
 
   let body: any;
   try {
@@ -60,6 +66,17 @@ export async function POST(request: NextRequest) {
   if (!hours.open) return fail(hours.reason || "Delivery isn't available right now.");
 
   const address = formatDeliveryAddress({ street, unit, city, zip });
+  if (manual) {
+    const fee = manualDeliveryFeeCents();
+    return NextResponse.json({
+      ok: true,
+      feeCents: fee,
+      customerFeeCents: fee,
+      pickupEta: formatEtaMaine(new Date(Date.now() + DELIVERY_PREP_MINUTES * 60_000).toISOString()),
+      dropoffEta: null,
+      address,
+    });
+  }
   try {
     const quote = await createQuote({
       externalId: `quote-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,

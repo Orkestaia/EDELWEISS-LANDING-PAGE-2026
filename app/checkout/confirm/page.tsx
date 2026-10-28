@@ -24,6 +24,7 @@ interface OrderData {
   readyAt?: string;
   etaDropoff?: string | null;
   deliveryFee?: number;
+  tip?: number;
 }
 
 function prettyDate(value: string) {
@@ -167,6 +168,9 @@ function ConfirmContent() {
                   )}
                   {order.fulfillment === "delivery" && typeof order.deliveryFee === "number" && order.deliveryFee > 0 && (
                     <Row label="Delivery" value={formatPrice(order.deliveryFee)} />
+                  )}
+                  {order.fulfillment === "delivery" && typeof order.tip === "number" && order.tip > 0 && (
+                    <Row label="Driver tip" value={formatPrice(order.tip)} />
                   )}
                   <Row label="Tax" value={formatPrice(order.tax)} />
                 </>
