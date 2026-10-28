@@ -322,7 +322,7 @@ export const products: Product[] = [
     slug: "tg-pumpkin-tart",
     name: "Pumpkin Tart 9\"",
     category: "Thanksgiving",
-    description: "Our new 9-inch pumpkin tart, spiced the Swiss way.",
+    description: "Classic pumpkin tart.",
     image: "",
     price: "$35.00",
     tag: "New",

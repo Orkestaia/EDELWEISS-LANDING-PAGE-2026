@@ -56,8 +56,8 @@ export function ThanksgivingSection() {
                 id="tg-title"
                 className="mt-6 font-display text-4xl sm:text-5xl lg:text-6xl text-cocoa leading-[1.05]"
               >
-                Thanksgiving, baked
-                <span className="italic text-rust"> the Swiss way.</span>
+                Thanksgiving
+                <span className="italic text-rust"> pre-orders.</span>
               </h2>
             </Reveal>
             <Reveal delay={0.1}>
@@ -78,7 +78,10 @@ export function ThanksgivingSection() {
                 {longDateLabel(THANKSGIVING.pickupDate)} · {pickupHours}
               </InfoRow>
               <InfoRow icon={<Leaf size={16} />} label="Holiday hours">
-                Closed Thanksgiving Day · {longDateLabel(THANKSGIVING.reopenDate).split(",")[0]} {reopenHours}
+                Closed Thanksgiving Day ·{" "}
+                <span className="whitespace-nowrap">
+                  {longDateLabel(THANKSGIVING.reopenDate)}: {reopenHours}
+                </span>
               </InfoRow>
               <InfoRow icon={<Phone size={16} />} label="Also by phone">
                 <a href="tel:+12077706945" className="hover:text-rust transition-colors">
