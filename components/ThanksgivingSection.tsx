@@ -48,7 +48,7 @@ export function ThanksgivingSection() {
             <Reveal>
               <span className="inline-flex items-center gap-3 text-rust uppercase tracking-[0.32em] text-xs">
                 <span className="w-8 h-px bg-rust" />
-                Pre-order · Thanksgiving 2026
+                Thanksgiving 2026
               </span>
             </Reveal>
             <Reveal delay={0.05}>
@@ -57,7 +57,7 @@ export function ThanksgivingSection() {
                 className="mt-6 font-display text-4xl sm:text-5xl lg:text-6xl text-cocoa leading-[1.05]"
               >
                 Thanksgiving
-                <span className="italic text-rust"> pre-orders.</span>
+                <span className="italic text-rust"> menu.</span>
               </h2>
             </Reveal>
             <Reveal delay={0.1}>
@@ -119,7 +119,7 @@ export function ThanksgivingSection() {
                     index={i}
                     reduce={!!reduce}
                     stock={stocks[p.slug]}
-                    categoryLabel="Thanksgiving pre-order"
+                    categoryLabel="Thanksgiving menu"
                     soldOutLabel="Sold out"
                   />
                 ))}

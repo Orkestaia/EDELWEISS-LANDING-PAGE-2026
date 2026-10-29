@@ -298,7 +298,7 @@ export default function CheckoutPage() {
           {tgCart ? (
             <>
               Your Thanksgiving
-              <span className="italic text-rust"> pre-order.</span>
+              <span className="italic text-rust"> order.</span>
             </>
           ) : fulfillment === "delivery" ? (
             <>
@@ -369,7 +369,7 @@ export default function CheckoutPage() {
 
             {tgCart && (
               <div className="rounded-2xl border border-rust/30 bg-rust/5 px-5 py-4 text-sm text-cocoa">
-                <p className="font-display text-xl text-cocoa">Thanksgiving pre-order</p>
+                <p className="font-display text-xl text-cocoa">Thanksgiving menu</p>
                 <p className="mt-1 text-cocoa/75">
                   Everything in this order is picked up on{" "}
                   <strong>{longDateLabel(THANKSGIVING.pickupDate)}</strong>, {specialHours ? hoursLabel(specialHours) : "8am – 3pm"}.
