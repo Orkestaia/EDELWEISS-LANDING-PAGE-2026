@@ -191,7 +191,7 @@ export const products: Product[] = [
     category: "Breads",
     description:
       "Olive-oil rich focaccia, dimpled, finished with rosemary and flaky sea salt.",
-    image: "/images/products/focaccia.jpg",
+    image: "/images/thanksgiving/rosemary-focaccia.webp",
     price: "$5.00",
     cloverItemId: "WNGNQAP6MMC7M",
   },
