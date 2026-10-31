@@ -344,7 +344,7 @@ export const products: Product[] = [
     name: "Rosemary Focaccia (quarter)",
     category: "Thanksgiving",
     description: "A quarter sheet of rosemary focaccia topped with olive oil and sea salt.",
-    image: "/images/products/focaccia.jpg",
+    image: "/images/thanksgiving/rosemary-focaccia.webp",
     price: "$10.00",
     tag: "Pre-order",
     cloverItemId: "JKNQFTDC6S7CY",
