@@ -323,7 +323,7 @@ export const products: Product[] = [
     name: "Pumpkin Tart 9\"",
     category: "Thanksgiving",
     description: "Classic pumpkin tart.",
-    image: "/images/thanksgiving/pumpkin-tart-table.jpg",
+    image: "/images/thanksgiving/pumpkin-tart.jpg",
     imageFit: "cover",
     price: "$35.00",
     tag: "New",
