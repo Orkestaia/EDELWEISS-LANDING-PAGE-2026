@@ -42,14 +42,15 @@ export const SPECIAL_HOURS: Record<string, SpecialHours> = {
     open: "08:00",
     close: "15:00",
     label: "Thanksgiving Eve",
-    noticeFrom: "2026-11-16",
-    note: "Thanksgiving pre-orders are picked up this day.",
+    // Valentina wants Thanksgiving week hours visible right away (2026-10-28).
+    noticeFrom: "2026-10-28",
+    note: "Thanksgiving pre-orders are picked up this day. Closed Thursday, November 26.",
   },
   "2026-11-27": {
     open: "09:00",
     close: "12:00",
     label: "Day after Thanksgiving",
-    noticeFrom: "2026-11-16",
+    noticeFrom: "2026-10-28",
   },
 };
 
