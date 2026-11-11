@@ -138,12 +138,30 @@ export interface DailyItem {
   unitsInStore: number;
   unitsOnline: number;
   unitsTotal: number;
+  /** v1.2: online units whose pick-up date is this same day / another day. */
+  unitsOnlineSameDay: number;
+  unitsOnlineOtherDay: number;
   refundedUnits: number;
   revenueCents: number;
   firstSaleAt: string | null;
   lastSaleAt: string | null;
+  /** All paid units by Maine hour (online ones at payment time). */
   hourly: Record<string, number>;
+  /** v1.2: counter sales only, the curve to use for sell-out estimates. */
+  hourlyInStore: Record<string, number>;
   stockEnd: number | null;
+}
+
+/** v1.2: an online line paid today for pick-up on another day. orderId = Clover order id
+ *  (the same id the n8n sheet stores as order_id), so the dashboard can dedupe. */
+export interface OnlinePickup {
+  orderId: string;
+  pickupDate: string;
+  pickupTime: string | null;
+  cloverItemId: string | null;
+  name: string;
+  units: number;
+  event: "thanksgiving" | null;
 }
 
 export interface DailySales {
@@ -154,6 +172,18 @@ export interface DailySales {
   orders: number;
   paidOrders: number;
   items: DailyItem[];
+  /** v1.2 */
+  onlinePickups: OnlinePickup[];
+}
+
+/** "ONLINE PICK-UP ORDER | Customer: .. | Pick-up: 2026-11-25 at 10:00 | Event: Thanksgiving pre-order | .." */
+function parseOrderNote(note: string): { pickupDate: string | null; pickupTime: string | null; event: "thanksgiving" | null } {
+  const m = /(?:^| \| )Pick-up: (\d{4}-\d{2}-\d{2})(?: at (\d{2}:\d{2}))?/.exec(note);
+  return {
+    pickupDate: m ? m[1] : null,
+    pickupTime: m && m[2] ? m[2] : null,
+    event: /(?:^| \| )Event: Thanksgiving/i.test(note) ? "thanksgiving" : null,
+  };
 }
 
 const EXCLUDED_LINE_NAMES = new Set(["Delivery (DoorDash)", "Driver tip (DoorDash)"]);
@@ -183,11 +213,14 @@ export async function fetchDailySales(merchantId: string, apiToken: string, date
     unitsInStore: 0,
     unitsOnline: 0,
     unitsTotal: 0,
+    unitsOnlineSameDay: 0,
+    unitsOnlineOtherDay: 0,
     refundedUnits: 0,
     revenueCents: 0,
     firstSaleAt: null,
     lastSaleAt: null,
     hourly: {},
+    hourlyInStore: {},
     stockEnd: stock,
   });
   for (const c of catalogue) {
@@ -198,12 +231,17 @@ export async function fetchDailySales(merchantId: string, apiToken: string, date
   }
 
   let paidOrders = 0;
+  const pickups = new Map<string, OnlinePickup>();
   for (const o of orders) {
     const paid = (o.payments?.elements || []).some((p: any) => p.result === "SUCCESS");
     if (!paid) continue;
     paidOrders++;
     const lines: any[] = o.lineItems?.elements || [];
-    const online = lines.some((li) => typeof li.note === "string" && li.note.startsWith("ONLINE"));
+    const onlineNote: string | undefined = lines.find((li) => typeof li.note === "string" && li.note.startsWith("ONLINE"))?.note;
+    const online = !!onlineNote;
+    const meta = online ? parseOrderNote(onlineNote!) : { pickupDate: null, pickupTime: null, event: null };
+    // No parsable pick-up date (very old orders): treat as same day.
+    const otherDay = online && !!meta.pickupDate && meta.pickupDate !== date;
     for (const li of lines) {
       if (EXCLUDED_LINE_NAMES.has(li.name)) continue;
       const rawQty = typeof li.unitQty === "number" ? li.unitQty : 1000;
@@ -221,12 +259,30 @@ export async function fetchDailySales(merchantId: string, apiToken: string, date
       }
       const ms: number = li.createdTime || o.createdTime;
       const hhmm = maineHHMM(ms);
-      if (online) row.unitsOnline = round2(row.unitsOnline + qty);
-      else row.unitsInStore = round2(row.unitsInStore + qty);
+      if (online) {
+        row.unitsOnline = round2(row.unitsOnline + qty);
+        if (otherDay) {
+          row.unitsOnlineOtherDay = round2(row.unitsOnlineOtherDay + qty);
+          const key = `${o.id}|${id ?? li.name}`;
+          const prev = pickups.get(key);
+          if (prev) prev.units = round2(prev.units + qty);
+          else
+            pickups.set(key, {
+              orderId: o.id,
+              pickupDate: meta.pickupDate!,
+              pickupTime: meta.pickupTime,
+              cloverItemId: id ?? null,
+              name: li.name,
+              units: qty,
+              event: meta.event,
+            });
+        } else row.unitsOnlineSameDay = round2(row.unitsOnlineSameDay + qty);
+      } else row.unitsInStore = round2(row.unitsInStore + qty);
       row.unitsTotal = round2(row.unitsInStore + row.unitsOnline);
       row.revenueCents += Math.round((li.price || 0) * qty);
       const h = String(maineHour(ms));
       row.hourly[h] = round2((row.hourly[h] || 0) + qty);
+      if (!online) row.hourlyInStore[h] = round2((row.hourlyInStore[h] || 0) + qty);
       if (!row.firstSaleAt || hhmm < row.firstSaleAt) row.firstSaleAt = hhmm;
       if (!row.lastSaleAt || hhmm > row.lastSaleAt) row.lastSaleAt = hhmm;
     }
@@ -242,6 +298,7 @@ export async function fetchDailySales(merchantId: string, apiToken: string, date
     orders: orders.length,
     paidOrders,
     items,
+    onlinePickups: [...pickups.values()].sort((a, b) => a.pickupDate.localeCompare(b.pickupDate) || a.name.localeCompare(b.name)),
   };
 }
 
