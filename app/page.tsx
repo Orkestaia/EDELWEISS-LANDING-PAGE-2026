@@ -14,6 +14,7 @@ import { NewsletterModal } from "@/components/NewsletterModal";
 import { SignupPopup } from "@/components/SignupPopup";
 import { HolidayNotice } from "@/components/HolidayNotice";
 import { ClosureNotice } from "@/components/ClosureNotice";
+import { SpecialHoursNotice } from "@/components/SpecialHoursNotice";
 import { ThanksgivingSection } from "@/components/ThanksgivingSection";
 import { SeasonalLeaves } from "@/components/SeasonalLeaves";
 
@@ -37,6 +38,7 @@ export default function Home() {
       <SignupPopup />
       <HolidayNotice />
       <ClosureNotice />
+      <SpecialHoursNotice />
       <SeasonalLeaves />
     </main>
   );

@@ -5,7 +5,14 @@ import { MapPin, Clock, Phone, Mail } from "lucide-react";
 import { Reveal } from "./Reveal";
 import { AlpineSilhouette } from "./AlpineBackground";
 import { isClosedToday, activeClosure, maineToday, type ActiveClosure } from "@/lib/closures";
-import { upcomingSpecialHours, hoursLabel, longDateLabel, type SpecialHours } from "@/lib/hours";
+import {
+  upcomingSpecialHours,
+  hoursLabel,
+  longDateLabel,
+  daysBetween,
+  weekdayLabel,
+  type SpecialHours,
+} from "@/lib/hours";
 
 const hours = [
   ["Monday", "7am – 2pm"],
@@ -54,6 +61,15 @@ export function Visit() {
     setClosure(activeClosure());
     setSpecial(upcomingSpecialHours(maineToday()));
   }, []);
+  // Announced special hours falling within the next 7 days replace that
+  // weekday's row in the table (further out, the weekday would be ambiguous).
+  const specialByWeekday = new Map<string, SpecialHours & { date: string }>();
+  if (special.length > 0) {
+    const today = maineToday();
+    for (const s of special) {
+      if (daysBetween(today, s.date) <= 6) specialByWeekday.set(weekdayLabel(s.date), s);
+    }
+  }
   return (
     <section id="visit" className="relative isolate bg-cream-100 paper overflow-hidden">
       <AlpineSilhouette
@@ -259,6 +275,7 @@ export function Visit() {
                   const isSatJuly4 = d === "Saturday" && isJuly4Week();
                   const isNewMonday = d === "Monday" && isMondayNewsWindow();
                   const isClosureDay = !!closure && closure.weekday === d;
+                  const specialDay = isClosureDay ? undefined : specialByWeekday.get(d);
                   return (
                     <div
                       key={d}
@@ -269,7 +286,7 @@ export function Visit() {
                         className={`text-right text-sm tracking-[0.18em] uppercase ${
                           t === "Closed" || isClosureDay
                             ? "text-rust font-semibold"
-                            : isSatJuly4
+                            : isSatJuly4 || specialDay
                             ? "text-mustard font-semibold"
                             : isNewMonday
                             ? "text-forest font-semibold"
@@ -278,6 +295,8 @@ export function Visit() {
                       >
                         {isClosureDay
                           ? `Closed ${closure!.shortDate}`
+                          : specialDay
+                          ? `${hoursLabel(specialDay)} ★`
                           : isSatJuly4
                           ? "8am – 12pm ★"
                           : isNewMonday

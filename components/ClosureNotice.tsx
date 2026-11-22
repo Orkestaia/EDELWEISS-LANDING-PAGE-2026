@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { EdelweissMark } from "./EdelweissMark";
 import { activeClosure, type ActiveClosure } from "@/lib/closures";
+import { isSpecialHoursNoticePending } from "./SpecialHoursNotice";
 
 const DELAY_MS = 1200;
 // Seen once as an advance notice and once again on the day itself.
@@ -29,6 +30,8 @@ export function ClosureNotice() {
 
   useEffect(() => {
     if (!isClosureNoticePending()) return;
+    // A special-hours popup goes first; this one comes back on the next page load.
+    if (isSpecialHoursNoticePending()) return;
     setClosure(activeClosure());
     const t = window.setTimeout(() => setOpen(true), DELAY_MS);
     return () => window.clearTimeout(t);

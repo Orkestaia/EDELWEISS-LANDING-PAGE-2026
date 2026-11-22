@@ -31,12 +31,24 @@ export interface SpecialHours extends DayHours {
   noticeFrom?: string;
   /** Extra line for the banner. */
   note?: string;
+  /** Also announce it with a popup on the home page (from `noticeFrom`, or on the day). */
+  popup?: boolean;
 }
 
 export const SPECIAL_HOURS: Record<string, SpecialHours> = {
   "2026-07-04": { open: "08:00", close: "12:00", label: "July 4th" },
   "2026-08-04": { open: "08:00", close: "14:00", label: "Short-staffed morning" },
   "2026-08-11": { open: "08:00", close: "14:00", label: "Short-staffed morning" },
+  // Monday Nov 23: open 7–11 only (Edelweiss request, 2026-11-22). Back to
+  // regular hours on Tuesday; announced with a popup the day before and on the day.
+  "2026-11-23": {
+    open: "07:00",
+    close: "11:00",
+    label: "Early closing",
+    noticeFrom: "2026-11-22",
+    note: "Back to regular hours on Tuesday.",
+    popup: true,
+  },
   // Thanksgiving week 2026 (menu doc from Valentina, 2026-10-23).
   "2026-11-25": {
     open: "08:00",
@@ -82,6 +94,41 @@ export function upcomingSpecialHours(today: string): (SpecialHours & { date: str
     .filter(([date, s]) => date >= today && !!s.noticeFrom && s.noticeFrom <= today)
     .sort(([a], [b]) => (a < b ? -1 : 1))
     .map(([date, s]) => ({ date, ...s }));
+}
+
+/**
+ * The special-hours day to announce with a popup right now: today's, or the
+ * nearest upcoming one whose `noticeFrom` has been reached. Null otherwise.
+ */
+export function activeHoursPopup(today: string): (SpecialHours & { date: string }) | null {
+  return (
+    Object.entries(SPECIAL_HOURS)
+      .filter(
+        ([date, s]) =>
+          !!s.popup && date >= today && (date === today || (!!s.noticeFrom && s.noticeFrom <= today))
+      )
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([date, s]) => ({ date, ...s }))[0] ?? null
+  );
+}
+
+/** Calendar days from `from` to `to` (both YYYY-MM-DD). */
+export function daysBetween(from: string, to: string): number {
+  return Math.round(
+    (new Date(`${to}T12:00:00Z`).getTime() - new Date(`${from}T12:00:00Z`).getTime()) / 86_400_000
+  );
+}
+
+/** The day after `date`, as YYYY-MM-DD. */
+export function nextDate(date: string): string {
+  return new Date(new Date(`${date}T12:00:00Z`).getTime() + 86_400_000).toISOString().slice(0, 10);
+}
+
+/** "2026-11-23" → "Monday" */
+export function weekdayLabel(date: string): string {
+  return new Intl.DateTimeFormat("en-US", { timeZone: "UTC", weekday: "long" }).format(
+    new Date(`${date}T12:00:00Z`)
+  );
 }
 
 /** "08:00" → "8am", "15:00" → "3pm", "09:30" → "9:30am" */
