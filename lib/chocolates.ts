@@ -36,14 +36,14 @@ export const chocolates: Chocolate[] = [
   },
   {
     slug: "maracaibo-65",
-    name: "Maracaibo 65% Grand Cru",
+    name: "Maracaibo Grand Cru 65%",
     group: "Truffles",
     description:
       "Deep, single-origin Venezuelan dark chocolate truffle — bittersweet and intense.",
     ingredients:
-      "Dark Chocolate · Cream · Butter · Glucose · Invert Sugar · Sea Salt",
+      "Dark Chocolate 65% · Heavy Cream · Butter · Glucose Syrup · Invert Sugar · Sea Salt · Cocoa Butter Colors",
     allergens: ["Dairy", "Soy"],
-    image: "/images/chocolates/bonbon-2.jpg",
+    image: "/images/chocolates/truffle-maracaibo.jpg",
   },
 
   // Bonbons (Seasonal Rotation)
