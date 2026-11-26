@@ -503,6 +503,9 @@ export async function POST(request: NextRequest) {
         pickupDate: pickupDateLabel,
         pickupTime: pickupTime.trim(),
         notes: noteFields["Notes"] || "",
+        // "christmas" / "thanksgiving" for holiday pre-orders, "" otherwise
+        // (note field "Event: Christmas pre-order"). The emails use it.
+        event: (noteFields["Event"] || "").replace(/\s*pre-order$/i, "").trim().toLowerCase(),
         items: productLines.map((li: any) => ({
           name: li.name,
           qty: qtyOf(li),

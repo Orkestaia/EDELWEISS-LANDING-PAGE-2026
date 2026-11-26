@@ -161,8 +161,17 @@ export interface OnlinePickup {
   cloverItemId: string | null;
   name: string;
   units: number;
+  /**
+   * Pre-order campaign of the line. The dashboard's feed parser only accepts
+   * "thanksgiving" or null (EDELWEISS-MARKETING_DASHBOARD src/lib/stock/feed.ts)
+   * and rejects the whole day otherwise, so Christmas pre-orders go out as
+   * null until the dashboard accepts "christmas" (see CHRISTMAS_EVENT_IN_FEED).
+   */
   event: "thanksgiving" | "christmas" | null;
 }
+
+/** Flip to true once the dashboard accepts event "christmas" in onlinePickups. */
+const CHRISTMAS_EVENT_IN_FEED = false;
 
 export interface DailySales {
   date: string;
@@ -184,7 +193,7 @@ function parseOrderNote(note: string): { pickupDate: string | null; pickupTime: 
     pickupTime: m && m[2] ? m[2] : null,
     event: /(?:^| \| )Event: Thanksgiving/i.test(note)
       ? "thanksgiving"
-      : /(?:^| \| )Event: Christmas/i.test(note)
+      : CHRISTMAS_EVENT_IN_FEED && /(?:^| \| )Event: Christmas/i.test(note)
       ? "christmas"
       : null,
   };

@@ -18,6 +18,7 @@ import { SpecialHoursNotice } from "@/components/SpecialHoursNotice";
 import { ThanksgivingSection } from "@/components/ThanksgivingSection";
 import { ChristmasSection } from "@/components/ChristmasSection";
 import { SeasonalLeaves } from "@/components/SeasonalLeaves";
+import { GingerbreadRunner } from "@/components/GingerbreadRunner";
 
 export default function Home() {
   return (
@@ -42,6 +43,7 @@ export default function Home() {
       <ClosureNotice />
       <SpecialHoursNotice />
       <SeasonalLeaves />
+      <GingerbreadRunner />
     </main>
   );
 }

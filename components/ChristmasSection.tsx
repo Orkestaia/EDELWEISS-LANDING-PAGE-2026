@@ -34,6 +34,14 @@ export function ChristmasSection() {
     setVisible(preview || christmasOpen(maineToday()));
   }, []);
 
+  // The block mounts after hydration, so a link to /#christmas (order emails)
+  // finds nothing to scroll to on load: do the scroll once it is on the page.
+  useEffect(() => {
+    if (!visible || window.location.hash !== "#christmas") return;
+    const t = window.setTimeout(() => document.getElementById("christmas")?.scrollIntoView(), 150);
+    return () => window.clearTimeout(t);
+  }, [visible]);
+
   if (!visible) return null;
 
   const pickupHours = hoursLabel(hoursForDate(CHRISTMAS.pickupDate));
