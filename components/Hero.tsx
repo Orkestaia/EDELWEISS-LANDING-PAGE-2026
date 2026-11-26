@@ -12,6 +12,8 @@ import {
 import { ArrowRight } from "lucide-react";
 import { EdelweissMark } from "./EdelweissMark";
 import { AlpinePeaks } from "./AlpineBackground";
+import { FirSprig, SnowCap, StringLights } from "./ChristmasDecor";
+import { useSeason } from "@/lib/season";
 
 /**
  * HERO — two-track design:
@@ -79,6 +81,8 @@ const floatingProducts: FloatingItem[] = [
 
 export function Hero() {
   const reduce = useReducedMotion();
+  // Christmas dressing (lib/season.ts): garland, fir sprigs, snow on the button.
+  const xmas = useSeason() === "winter";
   const sectionRef = useRef<HTMLElement>(null);
 
   // Scroll progress drives the whole→cut crossfade on the mobile backdrop.
@@ -129,6 +133,23 @@ export function Hero() {
         <div className="absolute inset-0 bg-gradient-to-b from-cream-50/40 via-cream-50/10 to-cream-50/60" />
       </div>
 
+      {/* ─── CHRISTMAS: fir in the top corners and a garland of lights under the navbar ─── */}
+      {xmas && (
+        <motion.div
+          aria-hidden
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1.2 }}
+          className="pointer-events-none absolute inset-0"
+        >
+          <FirSprig className="absolute -left-8 -top-4 -scale-y-100 sm:hidden" size={170} />
+          <FirSprig className="absolute -right-8 -top-4 -scale-100 sm:hidden" size={170} />
+          <FirSprig className="absolute -left-10 -top-6 hidden -scale-y-100 sm:block" size={280} />
+          <FirSprig className="absolute -right-10 -top-6 hidden -scale-100 sm:block" size={280} />
+          <StringLights wire="#4A3B32" greenery onLight className="top-14 origin-top scale-[0.8] sm:top-[4.25rem] sm:scale-100" />
+        </motion.div>
+      )}
+
       <div className="relative mx-auto max-w-7xl px-5 sm:px-8 pt-28 sm:pt-36 pb-20 sm:pb-24">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center">
           {/* ───── COPY ───── */}
@@ -175,8 +196,9 @@ export function Hero() {
             >
               <a
                 href="#shop"
-                className="group inline-flex items-center gap-2 rounded-full bg-cocoa text-cream-50 px-6 sm:px-7 py-3.5 text-xs sm:text-sm uppercase tracking-[0.2em] hover:bg-rust transition-colors"
+                className="group relative inline-flex items-center gap-2 rounded-full bg-cocoa text-cream-50 px-6 sm:px-7 py-3.5 text-xs sm:text-sm uppercase tracking-[0.2em] hover:bg-rust transition-colors"
               >
+                {xmas && <SnowCap className="-top-[7px] left-[9%] h-[18px] w-[82%]" />}
                 Order for pick-up
                 <ArrowRight
                   size={15}

@@ -5,10 +5,40 @@
  * motion is a slow opacity twinkle on the bulbs, off for reduced-motion.
  */
 
-const BULB_COLORS = ["#F4C95D", "#D8573F", "#FFF1CC", "#9CC29A"];
+/** Bulb colours: soft for dark backgrounds, deeper for the cream pages. */
+const BULBS_ON_DARK = ["#F4C95D", "#D8573F", "#FFF1CC", "#9CC29A"];
+const BULBS_ON_LIGHT = ["#E3A52C", "#C8473A", "#4E8A63", "#DB8430"];
 
-/** A garland of lights hanging along the top edge of its `relative` parent. */
-export function StringLights({ className = "" }: { className?: string }) {
+/** A small fan of fir needles with two berries, hanging from (0, 5). */
+const TUFT = (() => {
+  const r = (n: number) => Math.round(n * 10) / 10;
+  let d = "";
+  for (let i = 0; i < 9; i++) {
+    const a = (Math.PI * (12 + i * 19.5)) / 180; // fan from lower-right round to lower-left
+    const len = i % 2 ? 15 : 20;
+    d += `M0 5L${r(len * Math.cos(a))} ${r(5 + len * Math.sin(a))}`;
+  }
+  return d;
+})();
+
+/**
+ * A garland of lights hanging along the top edge of its `relative` parent
+ * (or wherever `className` puts it). `wire` is the cable colour; `greenery`
+ * adds a fir tuft with berries at every point where the cable is pinned;
+ * `onLight` picks bulb colours that read on a cream background.
+ */
+export function StringLights({
+  className = "",
+  wire = "#12251C",
+  greenery = false,
+  onLight = false,
+}: {
+  className?: string;
+  wire?: string;
+  greenery?: boolean;
+  onLight?: boolean;
+}) {
+  const palette = onLight ? BULBS_ON_LIGHT : BULBS_ON_DARK;
   const segments = 22; // 22 × 140px covers ultra-wide screens; the rest is clipped
   const bulbs = [
     { x: 28, y: 16.9 },
@@ -17,24 +47,31 @@ export function StringLights({ className = "" }: { className?: string }) {
   ];
   return (
     <div
-      className={`pointer-events-none absolute inset-x-0 top-0 flex h-14 justify-center overflow-hidden ${className}`}
+      className={`pointer-events-none absolute inset-x-0 flex h-14 justify-center overflow-hidden ${className || "top-0"}`}
       aria-hidden="true"
     >
       <style>{`
-        @keyframes xmas-twinkle { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+        @keyframes xmas-twinkle { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
         .xmas-bulb { animation: xmas-twinkle 3.6s ease-in-out infinite; }
         .xmas-bulb-1 { animation-delay: -1.2s; }
         .xmas-bulb-2 { animation-delay: -2.4s; }
         @media (prefers-reduced-motion: reduce) { .xmas-bulb { animation: none; } }
       `}</style>
       {Array.from({ length: segments }, (_, s) => (
-        <svg key={s} width="140" height="56" viewBox="0 0 140 56" className="shrink-0">
-          <path d="M0 6 Q70 40 140 6" fill="none" stroke="#12251C" strokeWidth="1.6" />
+        <svg key={s} width="140" height="56" viewBox="0 0 140 56" className="shrink-0 overflow-visible">
+          <path d="M0 6 Q70 40 140 6" fill="none" stroke={wire} strokeWidth="1.6" />
+          {greenery && (
+            <g>
+              <path d={TUFT} fill="none" stroke="#4E7A5C" strokeWidth="1.8" strokeLinecap="round" />
+              <circle cx="-3.5" cy="8" r="3.4" fill="#C8473A" />
+              <circle cx="4" cy="10" r="3" fill="#B53E33" />
+            </g>
+          )}
           {bulbs.map((b, i) => {
-            const color = BULB_COLORS[(s * 3 + i) % BULB_COLORS.length];
+            const color = palette[(s * 3 + i) % palette.length];
             return (
               <g key={i} className={`xmas-bulb xmas-bulb-${(s + i) % 3}`}>
-                <circle cx={b.x} cy={b.y + 10} r="13" fill={color} opacity="0.22" />
+                <circle cx={b.x} cy={b.y + 10} r="13" fill={color} opacity={onLight ? 0.16 : 0.22} />
                 <rect x={b.x - 2.5} y={b.y - 0.5} width="5" height="4.5" rx="1" fill="#C9B27A" />
                 <ellipse cx={b.x} cy={b.y + 10} rx="4.6" ry="6.6" fill={color} />
                 <ellipse cx={b.x - 1.4} cy={b.y + 7.6} rx="1.2" ry="2" fill="#FFFFFF" opacity="0.55" />
@@ -117,12 +154,17 @@ export function FirSprig({ className = "", size = 240 }: { className?: string; s
 }
 
 /** Snow resting on the top edge of a card. Parent must be `relative`. */
-export function SnowCap({ className = "" }: { className?: string }) {
+export function SnowCap({
+  className = "-top-3 left-5 right-5 h-8 w-[calc(100%-2.5rem)]",
+}: {
+  /** Position and size; the default suits a large rounded card. */
+  className?: string;
+}) {
   return (
     <svg
       viewBox="0 0 400 40"
       preserveAspectRatio="none"
-      className={`pointer-events-none absolute -top-3 left-5 right-5 h-8 w-[calc(100%-2.5rem)] drop-shadow-[0_2px_2px_rgba(31,59,46,0.18)] ${className}`}
+      className={`pointer-events-none absolute drop-shadow-[0_2px_2px_rgba(31,59,46,0.18)] ${className}`}
       aria-hidden="true"
     >
       <path
