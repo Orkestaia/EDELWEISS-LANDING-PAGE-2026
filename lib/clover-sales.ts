@@ -161,7 +161,7 @@ export interface OnlinePickup {
   cloverItemId: string | null;
   name: string;
   units: number;
-  event: "thanksgiving" | null;
+  event: "thanksgiving" | "christmas" | null;
 }
 
 export interface DailySales {
@@ -177,12 +177,16 @@ export interface DailySales {
 }
 
 /** "ONLINE PICK-UP ORDER | Customer: .. | Pick-up: 2026-11-25 at 10:00 | Event: Thanksgiving pre-order | .." */
-function parseOrderNote(note: string): { pickupDate: string | null; pickupTime: string | null; event: "thanksgiving" | null } {
+function parseOrderNote(note: string): { pickupDate: string | null; pickupTime: string | null; event: "thanksgiving" | "christmas" | null } {
   const m = /(?:^| \| )Pick-up: (\d{4}-\d{2}-\d{2})(?: at (\d{2}:\d{2}))?/.exec(note);
   return {
     pickupDate: m ? m[1] : null,
     pickupTime: m && m[2] ? m[2] : null,
-    event: /(?:^| \| )Event: Thanksgiving/i.test(note) ? "thanksgiving" : null,
+    event: /(?:^| \| )Event: Thanksgiving/i.test(note)
+      ? "thanksgiving"
+      : /(?:^| \| )Event: Christmas/i.test(note)
+      ? "christmas"
+      : null,
   };
 }
 

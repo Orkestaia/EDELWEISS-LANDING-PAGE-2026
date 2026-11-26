@@ -16,6 +16,7 @@ import { HolidayNotice } from "@/components/HolidayNotice";
 import { ClosureNotice } from "@/components/ClosureNotice";
 import { SpecialHoursNotice } from "@/components/SpecialHoursNotice";
 import { ThanksgivingSection } from "@/components/ThanksgivingSection";
+import { ChristmasSection } from "@/components/ChristmasSection";
 import { SeasonalLeaves } from "@/components/SeasonalLeaves";
 
 export default function Home() {
@@ -24,6 +25,7 @@ export default function Home() {
       <Navbar />
       <Hero />
       <ThanksgivingSection />
+      <ChristmasSection />
       <Showcase />
       <Newsletter />
       <DrinkBanner />

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { MapPin, Clock, Phone, Mail } from "lucide-react";
 import { Reveal } from "./Reveal";
 import { AlpineSilhouette } from "./AlpineBackground";
-import { isClosedToday, activeClosure, maineToday, type ActiveClosure } from "@/lib/closures";
+import { isClosedToday, activeClosure, closedWeekdaysAhead, maineToday, type ActiveClosure } from "@/lib/closures";
 import {
   upcomingSpecialHours,
   hoursLabel,
@@ -57,8 +57,11 @@ export function Visit() {
   // check would keep showing the banner after the closed day.
   const [closure, setClosure] = useState<ActiveClosure | null>(null);
   const [special, setSpecial] = useState<(SpecialHours & { date: string })[]>([]);
+  // Weekday → "Dec 24" for every closed date in the next seven days.
+  const [closedDays, setClosedDays] = useState<Map<string, string>>(new Map());
   useEffect(() => {
     setClosure(activeClosure());
+    setClosedDays(closedWeekdaysAhead());
     setSpecial(upcomingSpecialHours(maineToday()));
   }, []);
   // Announced special hours falling within the next 7 days replace that
@@ -199,10 +202,18 @@ export function Visit() {
               {closure && (
                 <div className="mt-5 rounded-xl border border-rust/40 bg-rust/10 px-4 py-3">
                   <p className="text-xs uppercase tracking-[0.2em] text-rust font-semibold mb-0.5">
-                    {closure.isToday ? "Closed today" : `Closed ${closure.longDate}`}
+                    {closure.isToday && !closure.isRange
+                      ? "Closed today"
+                      : `Closed ${closure.isRange ? closure.rangeLabel : closure.longDate}`}
                   </p>
                   <p className="text-sm text-cocoa">
-                    {closure.closure.reason === "holiday" ? (
+                    {closure.closure.reason === "holiday" && closure.isRange ? (
+                      <>
+                        We&apos;re <strong>closed {closure.rangeText}</strong> for{" "}
+                        {closure.closure.label}. No pick-ups those days; back{" "}
+                        {closure.backOn}.
+                      </>
+                    ) : closure.closure.reason === "holiday" ? (
                       closure.isToday ? (
                         <>
                           It&apos;s {closure.closure.label}: the bakery is{" "}
@@ -274,7 +285,8 @@ export function Visit() {
                 {hours.map(([d, t]) => {
                   const isSatJuly4 = d === "Saturday" && isJuly4Week();
                   const isNewMonday = d === "Monday" && isMondayNewsWindow();
-                  const isClosureDay = !!closure && closure.weekday === d;
+                  const closedShort = closedDays.get(d);
+                  const isClosureDay = !!closedShort;
                   const specialDay = isClosureDay ? undefined : specialByWeekday.get(d);
                   return (
                     <div
@@ -294,7 +306,7 @@ export function Visit() {
                         }`}
                       >
                         {isClosureDay
-                          ? `Closed ${closure!.shortDate}`
+                          ? `Closed ${closedShort}`
                           : specialDay
                           ? `${hoursLabel(specialDay)} ★`
                           : isSatJuly4

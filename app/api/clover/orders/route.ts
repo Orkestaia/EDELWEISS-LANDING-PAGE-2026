@@ -41,8 +41,8 @@ import {
   normalizeZip,
 } from "@/lib/delivery";
 import { createQuote, doordashConfigured, formatEtaMaine, friendlyDoorDashError, toE164 } from "@/lib/doordash";
-import { pickupSlotsForDate } from "@/lib/hours";
-import { THANKSGIVING, cartHasThanksgiving, thanksgivingOpen } from "@/lib/thanksgiving";
+import { pickupSlotsForDate, longDateLabel } from "@/lib/hours";
+import { cartPreorder } from "@/lib/preorders";
 
 const isSandbox = process.env.NEXT_PUBLIC_ENV === "sandbox";
 const CLOVER_API_URL = isSandbox
@@ -111,16 +111,20 @@ function validate(body: any): { valid: boolean; error?: string } {
   if (!c?.email || !EMAIL_RE.test(c.email)) {
     return { valid: false, error: "Please enter a valid email address." };
   }
-  // Thanksgiving pre-orders: fixed pick-up day, within the order window, no delivery.
-  if (cartHasThanksgiving(body.items as OrderItem[])) {
-    if (!thanksgivingOpen(maineToday())) {
-      return { valid: false, error: "Thanksgiving pre-orders are closed. Please remove those items." };
+  // Holiday pre-orders (Thanksgiving, Christmas): fixed pick-up day, within the order window, no delivery.
+  const preorder = cartPreorder(body.items as OrderItem[]);
+  if (preorder) {
+    if (!preorder.isOpen(maineToday())) {
+      return { valid: false, error: `${preorder.name} pre-orders are closed. Please remove those items.` };
     }
     if (body.fulfillment === "delivery") {
-      return { valid: false, error: "Thanksgiving pre-orders are pick-up only." };
+      return { valid: false, error: `${preorder.name} pre-orders are pick-up only.` };
     }
-    if (body.pickupDate !== THANKSGIVING.pickupDate) {
-      return { valid: false, error: "Thanksgiving pre-orders are picked up on Wednesday, November 25." };
+    if (body.pickupDate !== preorder.pickupDate) {
+      return {
+        valid: false,
+        error: `${preorder.name} pre-orders are picked up on ${longDateLabel(preorder.pickupDate)}.`,
+      };
     }
   }
   if (body.fulfillment === "delivery") {
@@ -348,7 +352,7 @@ export async function POST(request: NextRequest) {
       `Email: ${customer.email}`,
       `Pick-up: ${pickupDate} at ${pickupSlot}`,
       `Phone: ${customer.phone ? clean(customer.phone) : "—"}`,
-      cartHasThanksgiving(items) ? "Event: Thanksgiving pre-order" : null,
+      cartPreorder(items) ? `Event: ${cartPreorder(items)!.name} pre-order` : null,
       isDelivery ? `Deliver to: ${clean(deliveryAddress)}` : null,
       isDelivery && deliveryInstructions ? `Delivery notes: ${clean(deliveryInstructions)}` : null,
       notes ? `Notes: ${clean(notes)}` : null,

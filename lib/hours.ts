@@ -64,6 +64,21 @@ export const SPECIAL_HOURS: Record<string, SpecialHours> = {
     label: "Day after Thanksgiving",
     noticeFrom: "2026-10-28",
   },
+  // Christmas 2026 (Valentina's guide, 2026-11-26): pre-orders are picked up
+  // Dec 23, closed Dec 24 to 30 (lib/closures.ts), back Dec 31 with regular hours.
+  "2026-12-23": {
+    open: "08:00",
+    close: "15:00",
+    label: "Christmas pick-up day",
+    noticeFrom: "2026-12-01",
+    note: "Christmas pre-orders are picked up this day. Closed December 24 to 30.",
+  },
+  "2027-01-01": {
+    open: "09:00",
+    close: "14:00",
+    label: "New Year's Day",
+    noticeFrom: "2026-12-01",
+  },
 };
 
 /** Noon UTC so the calendar date never shifts with the viewer's timezone. */

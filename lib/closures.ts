@@ -9,7 +9,7 @@
  * in advance from that date. Without it, the notice only shows on the day.
  */
 
-import { hhmmLabel, hoursForDate } from "./hours";
+import { daysBetween, hhmmLabel, hoursForDate, nextDate } from "./hours";
 
 /** "other" = closed with no public reason; the notice just apologises. */
 export type ClosureReason = "illness" | "holiday" | "other";
@@ -20,6 +20,15 @@ export interface Closure {
   label?: string;
   /** First Maine date on which the advance notice is shown. */
   noticeFrom?: string;
+  /** First Maine date for the advance popup, when later than the banner (`noticeFrom`). */
+  popupFrom?: string;
+}
+
+/** Every date from `from` to `until` (inclusive) closed for the same reason. */
+function closedRange(from: string, until: string, closure: Closure): Record<string, Closure> {
+  const out: Record<string, Closure> = {};
+  for (let d = from; d <= until; d = nextDate(d)) out[d] = closure;
+  return out;
 }
 
 export const CLOSED_DATES: Record<string, Closure> = {
@@ -38,6 +47,14 @@ export const CLOSED_DATES: Record<string, Closure> = {
     label: "Thanksgiving Day",
     noticeFrom: "2026-11-16",
   },
+  // Christmas break (Valentina's guide, 2026-11-26): closed Dec 24 to Dec 30,
+  // back Thursday Dec 31. Banner in Visit from Dec 1, popup from Dec 14.
+  ...closedRange("2026-12-24", "2026-12-30", {
+    reason: "holiday",
+    label: "the Christmas holidays",
+    noticeFrom: "2026-12-01",
+    popupFrom: "2026-12-14",
+  }),
 };
 
 /** Today's date in Maine (America/New_York) as YYYY-MM-DD. */
@@ -68,8 +85,18 @@ export interface ActiveClosure {
   longDate: string;
   /** "Oct 12" */
   shortDate: string;
-  /** Next open day, e.g. "Tuesday · 7:00 am" */
+  /** Next open day, e.g. "Tuesday · 7 am"; with the date after a multi-day closure. */
   backOn: string;
+  /** The next open day is the day after `date`. */
+  backNextDay: boolean;
+  /** Several closed days in a row (e.g. the Christmas break). */
+  isRange: boolean;
+  /** "December 24 – 30" for a multi-day closure, otherwise same as longDate. */
+  rangeLabel: string;
+  /** "December 24 to 30" */
+  rangeText: string;
+  /** False while only the Visit banner should announce it (before `popupFrom`). */
+  popupReady: boolean;
 }
 
 /**
@@ -91,10 +118,28 @@ export function activeClosure(): ActiveClosure | null {
       }) ?? null;
   }
   if (!picked) return null;
-  return describeClosure(picked, picked === today);
+  return describeClosure(picked, picked === today, today);
 }
 
-function describeClosure(date: string, isToday: boolean): ActiveClosure {
+/**
+ * Closed dates in the seven days starting today, keyed by weekday name
+ * ("Thursday" → "Dec 24"), for the weekly hours table.
+ */
+export function closedWeekdaysAhead(): Map<string, string> {
+  const today = maineToday();
+  const out = new Map<string, string>();
+  for (const date of Object.keys(CLOSED_DATES)) {
+    const diff = daysBetween(today, date);
+    if (diff < 0 || diff > 6) continue;
+    const d = toDate(date);
+    const fmt = (opts: Intl.DateTimeFormatOptions) =>
+      new Intl.DateTimeFormat("en-US", { timeZone: "UTC", ...opts }).format(d);
+    out.set(fmt({ weekday: "long" }), fmt({ month: "short", day: "numeric" }));
+  }
+  return out;
+}
+
+function describeClosure(date: string, isToday: boolean, today: string): ActiveClosure {
   const d = toDate(date);
   const fmt = (opts: Intl.DateTimeFormatOptions) =>
     new Intl.DateTimeFormat("en-US", { timeZone: "UTC", ...opts }).format(d);
@@ -110,14 +155,35 @@ function describeClosure(date: string, isToday: boolean): ActiveClosure {
     weekday: "long",
   }).format(next);
   const opens = hhmmLabel(hoursForDate(nextKey).open).replace(/(am|pm)$/, " $1");
+  // The whole run of closed days around `date` (one day for a normal closure).
+  let first = date;
+  for (;;) {
+    const prev = new Date(toDate(first).getTime() - 86_400_000).toISOString().slice(0, 10);
+    if (!(prev in CLOSED_DATES)) break;
+    first = prev;
+  }
+  const last = new Date(next.getTime() - 86_400_000).toISOString().slice(0, 10);
+  const isRange = first !== last;
+  const part = (key: string, opts: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat("en-US", { timeZone: "UTC", ...opts }).format(toDate(key));
+  const sameMonth = first.slice(0, 7) === last.slice(0, 7);
+  const from = part(first, { month: "long", day: "numeric" });
+  const until = sameMonth ? part(last, { day: "numeric" }) : part(last, { month: "long", day: "numeric" });
+  const closure = CLOSED_DATES[date];
+  const nextLong = part(nextKey, { weekday: "long", month: "long", day: "numeric" });
   return {
     date,
-    closure: CLOSED_DATES[date],
+    closure,
     isToday,
     weekday: fmt({ weekday: "long" }),
     longDate: fmt({ weekday: "long", month: "long", day: "numeric" }),
     shortDate: fmt({ month: "short", day: "numeric" }),
-    backOn: `${nextWeekday} · ${opens}`,
+    backOn: isRange ? `${nextLong} · ${opens}` : `${nextWeekday} · ${opens}`,
+    backNextDay: nextKey === nextDate(date),
+    isRange,
+    rangeLabel: isRange ? `${from} – ${until}` : fmt({ weekday: "long", month: "long", day: "numeric" }),
+    rangeText: isRange ? `${from} to ${until}` : fmt({ weekday: "long", month: "long", day: "numeric" }),
+    popupReady: isToday || today >= (closure.popupFrom ?? closure.noticeFrom ?? date),
   };
 }
 

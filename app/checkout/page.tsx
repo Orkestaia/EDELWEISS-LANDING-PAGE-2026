@@ -11,7 +11,7 @@ import { trackBeginCheckout } from "@/lib/analytics";
 import { cartTotals, SALES_TAX_PERCENT } from "@/lib/tax";
 import { isClosedDate, maineToday } from "@/lib/closures";
 import { SPECIAL_HOURS, hoursLabel, pickupSlotsForDate, longDateLabel } from "@/lib/hours";
-import { THANKSGIVING, cartHasThanksgiving } from "@/lib/thanksgiving";
+import { cartPreorder } from "@/lib/preorders";
 import {
   DELIVERY_CITIES,
   DELIVERY_ENABLED,
@@ -97,9 +97,10 @@ export default function CheckoutPage() {
   const [deliveryInstructions, setDeliveryInstructions] = useState("");
   const [quote, setQuote] = useState<Quote>({ status: "idle" });
   const resetQuote = () => setQuote((q) => (q.status === "idle" ? q : { status: "idle" }));
-  // Thanksgiving pre-orders: everything in the cart is picked up on the fixed
+  // Holiday pre-orders (Thanksgiving, Christmas): everything in the cart is picked up on the fixed
   // day, no delivery. The server enforces the same rules.
-  const tgCart = cartHasThanksgiving(items);
+  const preorder = cartPreorder(items);
+  const tgCart = !!preorder;
   const effectiveFulfillment: Fulfillment = tgCart ? "pickup" : fulfillment;
   const totals = cartTotals(
     items,
@@ -109,7 +110,7 @@ export default function CheckoutPage() {
   const [phone, setPhone] = useState("");
   const [pickupDate, setPickupDate] = useState(dates[0]?.value ?? "");
   const [pickupSlot, setPickupSlot] = useState("");
-  const effectivePickupDate = tgCart ? THANKSGIVING.pickupDate : pickupDate;
+  const effectivePickupDate = preorder ? preorder.pickupDate : pickupDate;
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -297,7 +298,7 @@ export default function CheckoutPage() {
         <h1 className="mt-5 font-display text-4xl sm:text-5xl text-cocoa leading-[1.05]">
           {tgCart ? (
             <>
-              Your Thanksgiving
+              Your {preorder!.name}
               <span className="italic text-rust"> order.</span>
             </>
           ) : fulfillment === "delivery" ? (
@@ -369,10 +370,10 @@ export default function CheckoutPage() {
 
             {tgCart && (
               <div className="rounded-2xl border border-rust/30 bg-rust/5 px-5 py-4 text-sm text-cocoa">
-                <p className="font-display text-xl text-cocoa">Thanksgiving menu</p>
+                <p className="font-display text-xl text-cocoa">{preorder!.name} menu</p>
                 <p className="mt-1 text-cocoa/75">
                   Everything in this order is picked up on{" "}
-                  <strong>{longDateLabel(THANKSGIVING.pickupDate)}</strong>, {specialHours ? hoursLabel(specialHours) : "8am – 3pm"}.
+                  <strong>{longDateLabel(preorder!.pickupDate)}</strong>, {specialHours ? hoursLabel(specialHours) : "8am – 3pm"}.
                   Pick-up only; choose your time below. Loyalty points can only be redeemed in person.
                 </p>
               </div>
@@ -425,7 +426,7 @@ export default function CheckoutPage() {
                     <input
                       type="text"
                       readOnly
-                      value={longDateLabel(THANKSGIVING.pickupDate)}
+                      value={longDateLabel(preorder!.pickupDate)}
                       className="cf-input bg-cream-100 text-cocoa/70"
                     />
                   ) : (
@@ -759,7 +760,7 @@ export default function CheckoutPage() {
                 {effectiveFulfillment === "delivery"
                   ? "A DoorDash courier brings your order; you'll get a tracking link by email."
                   : tgCart
-                  ? `Your Thanksgiving order will be ready on ${longDateLabel(THANKSGIVING.pickupDate)} at the chosen time.`
+                  ? `Your ${preorder!.name} order will be ready on ${longDateLabel(preorder!.pickupDate)} at the chosen time.`
                   : "Your order will be ready for pick-up at the chosen time."}
               </p>
             </div>

@@ -4,8 +4,9 @@ export type ProductCategory =
   | "Pastries"
   | "Cookies"
   | "Granola"
-  // Dated pre-order block (lib/thanksgiving.ts); not part of `categories`.
-  | "Thanksgiving";
+  // Dated pre-order blocks (lib/thanksgiving.ts, lib/christmas.ts); not part of `categories`.
+  | "Thanksgiving"
+  | "Christmas";
 
 export type Product = {
   slug: string;
@@ -292,25 +293,38 @@ export const products: Product[] = [
     cloverItemId: "6BXC43Z1R6W8R",
   },
 
-  // --- Thanksgiving 2026 pre-orders (lib/thanksgiving.ts) ---
-  // Separate Clover items ("Thanksgiving ...") so stock never mixes with the
-  // daily bake. Names carry "(Thanksgiving)" where a daily twin exists: the
-  // webhook matches line items to products BY NAME for stock.
+  // --- Christmas 2026 pre-orders (lib/christmas.ts) ---
+  // Valentina renamed the Thanksgiving items in Clover to "Christmas ..." and
+  // kept their ids (2026-11-26), so these replace the Thanksgiving products
+  // one to one; Stollen and Panettone are new. Separate Clover items, so stock
+  // never mixes with the daily bake. Names carry "(Christmas)" where a daily
+  // twin exists: the webhook matches line items to products BY NAME for stock.
   {
-    slug: "tg-apple-cranberry-tart",
-    name: "Apple & Cranberry Almond Tart 9\"",
-    category: "Thanksgiving",
-    description: "Apples and cranberries over almond cream in a buttery 9-inch tart.",
-    image: "/images/thanksgiving/apple-cranberry-tart.jpg",
+    slug: "xmas-stollen",
+    name: "Christmas Stollen",
+    category: "Christmas",
+    description: "Our Christmas stollen, rich with dried fruit and nuts and finished in a snowy coat of sugar.",
+    image: "/images/christmas/stollen.jpg",
     imageFit: "cover",
     price: "$35.00",
-    tag: "Pre-order",
-    cloverItemId: "DS451ENN9BTXP",
+    tag: "New",
+    cloverItemId: "QVRPXRGKZS3QW",
   },
   {
-    slug: "tg-pear-streusel-kuchen",
+    slug: "xmas-panettone",
+    name: "Panettone",
+    category: "Christmas",
+    description: "Tall, airy panettone with candied orange and raisins under a pearl-sugar crust. Baked to order.",
+    image: "/images/christmas/panettone.jpg",
+    imageFit: "cover",
+    price: "$40.00",
+    tag: "Special order",
+    cloverItemId: "XM20DSWR5FS66",
+  },
+  {
+    slug: "xmas-pear-streusel-kuchen",
     name: "Pear Streusel Kuchen",
-    category: "Thanksgiving",
+    category: "Christmas",
     description: "Spiced cake baked with pears and a spiced streusel topping.",
     image: "/images/thanksgiving/pear-streusel-kuchen.jpg",
     imageFit: "cover",
@@ -319,20 +333,20 @@ export const products: Product[] = [
     cloverItemId: "4PA2SZV88YM28",
   },
   {
-    slug: "tg-pumpkin-tart",
-    name: "Pumpkin Tart 9\"",
-    category: "Thanksgiving",
-    description: "Classic pumpkin tart.",
-    image: "/images/thanksgiving/pumpkin-tart.jpg",
+    slug: "xmas-apple-cranberry-tart",
+    name: "Apple & Cranberry Almond Tart 9\"",
+    category: "Christmas",
+    description: "Apples and cranberries over almond cream in a buttery 9-inch tart.",
+    image: "/images/thanksgiving/apple-cranberry-tart.jpg",
     imageFit: "cover",
     price: "$35.00",
-    tag: "New",
-    cloverItemId: "JZJ588FAPT830",
+    tag: "Pre-order",
+    cloverItemId: "DS451ENN9BTXP",
   },
   {
-    slug: "tg-dinner-rolls",
+    slug: "xmas-dinner-rolls",
     name: "Dinner Rolls (6)",
-    category: "Thanksgiving",
+    category: "Christmas",
     description: "Soft milk rolls, six to a bag.",
     image: "/images/thanksgiving/dinner-rolls.jpg",
     imageFit: "cover",
@@ -341,9 +355,9 @@ export const products: Product[] = [
     cloverItemId: "K87AA09380AZC",
   },
   {
-    slug: "tg-rosemary-focaccia",
+    slug: "xmas-rosemary-focaccia",
     name: "Rosemary Focaccia (quarter)",
-    category: "Thanksgiving",
+    category: "Christmas",
     description: "A quarter sheet of rosemary focaccia topped with olive oil and sea salt.",
     image: "/images/thanksgiving/rosemary-focaccia-table.jpg",
     imageFit: "cover",
@@ -352,49 +366,49 @@ export const products: Product[] = [
     cloverItemId: "JKNQFTDC6S7CY",
   },
   {
-    slug: "tg-plain-croissant",
-    name: "Plain Croissant (Thanksgiving)",
-    category: "Thanksgiving",
+    slug: "xmas-plain-croissant",
+    name: "Plain Croissant (Christmas)",
+    category: "Christmas",
     description: "The classic butter croissant, laminated over three days.",
     image: "/images/products/butter-croissant.jpg",
     price: "$4.00",
     cloverItemId: "49W1RRQBKWZPG",
   },
   {
-    slug: "tg-chocolate-croissant",
-    name: "Chocolate Croissant (Thanksgiving)",
-    category: "Thanksgiving",
+    slug: "xmas-chocolate-croissant",
+    name: "Chocolate Croissant (Christmas)",
+    category: "Christmas",
     description: "Flaky croissant with two batons of dark chocolate.",
     image: "/images/products/chocolate-croissant.jpg",
     price: "$4.50",
     cloverItemId: "AE36658HVZSQ2",
   },
   {
-    slug: "tg-almond-croissant",
-    name: "Almond Croissant (Thanksgiving)",
-    category: "Thanksgiving",
+    slug: "xmas-almond-croissant",
+    name: "Almond Croissant (Christmas)",
+    category: "Christmas",
     description: "Filled with almond cream, baked twice, finished with toasted almonds.",
     image: "/images/products/almond-croissant.jpg",
     price: "$6.00",
     cloverItemId: "X5Z015S6JTP5P",
   },
   {
-    slug: "tg-walnut-schnecken",
-    name: "Walnut Schnecken (Thanksgiving)",
-    category: "Thanksgiving",
-    description: "Our Swiss nut spiral, moist and tender, with a vanilla glaze.",
-    image: "/images/products/nuss-schnecken.jpg",
-    price: "$5.50",
-    cloverItemId: "42AZ5H2R5W4GA",
-  },
-  {
-    slug: "tg-blueberry-scone",
-    name: "Blueberry & Lemon Scone (Thanksgiving)",
-    category: "Thanksgiving",
+    slug: "xmas-blueberry-scone",
+    name: "Blueberry & Lemon Scone (Christmas)",
+    category: "Christmas",
     description: "Buttery scone studded with Maine blueberries and brightened with candied lemon.",
     image: "/images/products/blueberry-scone.jpg",
     price: "$4.00",
     cloverItemId: "57SSY9YZHGTVW",
+  },
+  {
+    slug: "xmas-nuss-schnecken",
+    name: "Nuss Schnecken (Christmas)",
+    category: "Christmas",
+    description: "Our Swiss nut spiral, moist and tender, with a vanilla glaze.",
+    image: "/images/products/nuss-schnecken.jpg",
+    price: "$5.50",
+    cloverItemId: "42AZ5H2R5W4GA",
   },
 
   // --- Cookies ---
@@ -472,4 +486,6 @@ export const categoryDescriptions: Record<ProductCategory, string> = {
     "Toasted oats, nuts and dried fruit — perfect with yogurt, milk or by the handful.",
   Thanksgiving:
     "Pre-order for pick-up on Thanksgiving Eve: large desserts, breads and breakfast pastries.",
+  Christmas:
+    "Pre-order for pick-up on December 23: stollen, panettone, large desserts, breads and breakfast pastries.",
 };

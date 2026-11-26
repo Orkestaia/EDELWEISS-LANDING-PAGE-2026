@@ -20,7 +20,7 @@ const storageKey = (c: ActiveClosure) =>
 export function isClosureNoticePending() {
   if (typeof window === "undefined") return false;
   const c = activeClosure();
-  return !!c && !window.localStorage.getItem(storageKey(c));
+  return !!c && c.popupReady && !window.localStorage.getItem(storageKey(c));
 }
 
 /** Popup for closures listed in lib/closures.ts. Inactive on any other day. */
@@ -57,7 +57,7 @@ export function ClosureNotice() {
   };
 
   if (!closure) return null;
-  const { isToday, weekday, longDate, backOn, closure: info } = closure;
+  const { isToday, weekday, longDate, backOn, backNextDay, isRange, rangeLabel, rangeText, closure: info } = closure;
   const holiday = info.reason === "holiday";
   const illness = info.reason === "illness";
 
@@ -115,14 +115,28 @@ export function ClosureNotice() {
                   </>
                 ) : (
                   <>
-                    Closed on
-                    <span className="block italic text-mustard">{longDate}.</span>
+                    {isRange ? "Closed" : "Closed on"}
+                    <span className="block italic text-mustard">{isRange ? rangeLabel : longDate}.</span>
                   </>
                 )}
               </h2>
 
               <p className="mt-4 text-cream-50/75 text-sm leading-relaxed">
-                {holiday ? (
+                {holiday && isRange ? (
+                  isToday ? (
+                    <>
+                      We&apos;re closed for {info.label},{" "}
+                      <strong className="text-cream-50">{rangeText}</strong>, so there are no
+                      pick-ups today. Happy holidays!
+                    </>
+                  ) : (
+                    <>
+                      The bakery will be closed for {info.label},{" "}
+                      <strong className="text-cream-50">{rangeText}</strong>, so there are no
+                      pick-ups those days. Online orders for any other day are open as usual.
+                    </>
+                  )
+                ) : holiday ? (
                   isToday ? (
                     <>
                       It&apos;s {info.label}, so the bakery is{" "}
@@ -159,11 +173,13 @@ export function ClosureNotice() {
 
               <div className="mt-6 rounded-2xl border border-cream-50/15 bg-cream-50/[0.06] p-4 text-sm">
                 <span className="text-cream-50/60 uppercase tracking-[0.18em] text-[0.65rem]">
-                  {isToday ? "Back tomorrow" : "Back on"}
+                  {isToday && backNextDay ? "Back tomorrow" : "Back on"}
                 </span>
                 <div className="mt-1 font-display text-2xl text-cream-50">{backOn}</div>
                 <p className="mt-1 text-cream-50/60 text-xs">
-                  {isToday
+                  {isToday && !backNextDay
+                    ? "Online orders for pick-up from that day are open."
+                    : isToday
                     ? "Online orders for pick-up from tomorrow are open."
                     : "Every other day we're open as usual."}
                 </p>

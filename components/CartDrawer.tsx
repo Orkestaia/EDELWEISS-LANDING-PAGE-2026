@@ -6,10 +6,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Minus, Plus, X, ShoppingBag } from "lucide-react";
 import { useCart, formatPrice } from "@/lib/cart";
 import { cartTotals, SALES_TAX_PERCENT } from "@/lib/tax";
+import { cartPreorder } from "@/lib/preorders";
+import { longDateLabel } from "@/lib/hours";
 
 export function CartDrawer() {
   const { items, isOpen, close, count, setQuantity, removeItem } = useCart();
   const totals = cartTotals(items);
+  const preorder = cartPreorder(items);
 
   return (
     <AnimatePresence>
@@ -150,7 +153,10 @@ export function CartDrawer() {
                 </div>
                 <p className="text-xs leading-relaxed text-cocoa/55">
                   Every day, 7am–2pm. You&apos;ll choose your pick-up time at
-                  checkout. Thanksgiving pre-orders are picked up on Wednesday, November 25.
+                  checkout.
+                  {preorder
+                    ? ` ${preorder.name} pre-orders are picked up on ${longDateLabel(preorder.pickupDate)}.`
+                    : ""}
                 </p>
                 <Link
                   href="/checkout"
