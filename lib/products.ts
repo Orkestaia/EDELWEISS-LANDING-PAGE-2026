@@ -192,7 +192,9 @@ export const products: Product[] = [
     category: "Breads",
     description:
       "Olive-oil rich focaccia, dimpled, finished with rosemary and flaky sea salt.",
-    image: "/images/thanksgiving/rosemary-focaccia.webp",
+    // The individual round focaccia sold every day (Valentina, 2026-11-27: the
+    // quarter-sheet photo is the holiday pre-order size, not this one).
+    image: "/images/products/daily-focaccia.jpg",
     price: "$5.00",
     cloverItemId: "WNGNQAP6MMC7M",
   },
@@ -303,7 +305,7 @@ export const products: Product[] = [
     slug: "xmas-stollen",
     name: "Christmas Stollen",
     category: "Christmas",
-    description: "Our Christmas stollen, rich with dried fruit and nuts and finished in a snowy coat of sugar.",
+    description: "Our Christmas stollen, rich with dried fruit and nuts and finished in a coat of powder sugar.",
     image: "/images/christmas/stollen.jpg",
     imageFit: "cover",
     price: "$35.00",
@@ -314,11 +316,11 @@ export const products: Product[] = [
     slug: "xmas-panettone",
     name: "Panettone",
     category: "Christmas",
-    description: "Tall, airy panettone with candied orange and raisins under a pearl-sugar crust. Baked to order.",
+    description: "Tall, airy panettone with candied orange and raisins under a pearl-sugar crust. Very limited amount.",
     image: "/images/christmas/panettone.jpg",
     imageFit: "cover",
     price: "$40.00",
-    tag: "Special order",
+    tag: "Very limited",
     cloverItemId: "XM20DSWR5FS66",
   },
   {

@@ -68,15 +68,15 @@ export function GingerbreadRunner() {
           68%      { transform: translateY(-70px); }
           80%, 100% { transform: translateY(0); }
         }
-        /* The cut-out leans about 22deg to the left, so 22deg stands him upright. */
+        /* The cut-out leans about 22deg to the right, so -22deg stands him upright. */
         @keyframes ginger-roll {
-          0%   { transform: rotate(-338deg); }
-          36%  { transform: rotate(22deg); }
-          42%  { transform: rotate(12deg); }
-          48%  { transform: rotate(32deg); }
-          54%  { transform: rotate(12deg); }
-          62%  { transform: rotate(22deg); }
-          100% { transform: rotate(382deg); }
+          0%   { transform: rotate(-382deg); }
+          36%  { transform: rotate(-22deg); }
+          42%  { transform: rotate(-32deg); }
+          48%  { transform: rotate(-12deg); }
+          54%  { transform: rotate(-32deg); }
+          62%  { transform: rotate(-22deg); }
+          100% { transform: rotate(338deg); }
         }
         .ginger-cross { animation: ginger-cross ${DURATION_S}s cubic-bezier(0.4, 0, 0.6, 1) forwards; will-change: transform; }
         .ginger-hop { animation: ginger-hop ${DURATION_S}s ease-in-out forwards; }
